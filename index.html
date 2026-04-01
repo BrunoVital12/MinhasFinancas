@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minhas Finanças</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236c63ff'/><text y='72' x='14' font-size='68'>💰</text></svg>">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <div id="logo">
+        <i data-lucide="wallet" style="width:22px;height:22px;color:var(--cor-ativo)"></i>
+        <h1>Minhas Finanças</h1>
+      </div>
+      <ul id="menu">
+        <li class="menu-item ativo" data-secao="dashboard">
+          <i data-lucide="layout-dashboard" class="icone-svg"></i> Visão Geral
+        </li>
+        <li class="menu-item" data-secao="importar">
+          <i data-lucide="file-up" class="icone-svg"></i> Importar CSV
+        </li>
+        <li class="menu-item" data-secao="categorias">
+          <i data-lucide="tag" class="icone-svg"></i> Categorias
+        </li>
+        <li class="menu-item" data-secao="resumo">
+          <i data-lucide="bar-chart-2" class="icone-svg"></i> Resumo Anual
+        </li>
+        <li class="menu-item" data-secao="busca">
+          <i data-lucide="search" class="icone-svg"></i> Busca Global
+        </li>
+        <li class="menu-item" data-secao="comparar">
+          <i data-lucide="git-compare" class="icone-svg"></i> Comparar Meses
+        </li>
+      </ul>
+      <div id="area-backup">
+        <hr class="divisor-sidebar" />
+        <button id="btn-fazer-backup" class="btn-backup" title="Baixar backup completo dos dados">
+          <i data-lucide="download" class="icone-svg"></i> Fazer Backup
+        </button>
+        <button id="btn-restaurar-backup" class="btn-backup btn-restaurar" title="Restaurar dados de um backup">
+          <i data-lucide="upload" class="icone-svg"></i> Restaurar Backup
+        </button>
+        <input type="file" id="input-restaurar" accept=".json" style="display:none" />
+        <button id="btn-apagar-tudo" class="btn-apagar-tudo" title="Apagar todos os gastos permanentemente">
+          apagar todos os dados
+        </button>
+      </div>
+    </nav>
+
+    <!-- Conteúdo principal -->
+    <main id="conteudo">
+      <!-- Seções -->
+      <section id="secao-dashboard" class="secao ativa"></section>
+      <section id="secao-adicionar" class="secao"></section>
+      <section id="secao-importar" class="secao"></section>
+      <section id="secao-categorias" class="secao"></section>
+      <section id="secao-resumo" class="secao"></section>
+      <section id="secao-busca" class="secao"></section>
+      <section id="secao-comparar" class="secao"></section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
