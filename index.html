@@ -37,8 +37,12 @@
           <i data-lucide="git-compare" class="icone-svg"></i> Comparar Meses
         </li>
       </ul>
-      <div id="area-backup">
+<div id="area-backup">
         <hr class="divisor-sidebar" />
+        <button id="btn-tema" class="btn-backup" title="Alternar tema claro/escuro">
+          <i id="icone-tema" data-lucide="sun" class="icone-svg"></i>
+          <span id="label-tema">Tema claro</span>
+        </button>
         <button id="btn-fazer-backup" class="btn-backup" title="Baixar backup completo dos dados">
           <i data-lucide="download" class="icone-svg"></i> Fazer Backup
         </button>
@@ -46,8 +50,9 @@
           <i data-lucide="upload" class="icone-svg"></i> Restaurar Backup
         </button>
         <input type="file" id="input-restaurar" accept=".json" style="display:none" />
-        <button id="btn-apagar-tudo" class="btn-apagar-tudo" title="Apagar todos os gastos permanentemente">
-          apagar todos os dados
+        <button id="btn-apagar-tudo" class="btn-apagar-tudo" title="Apagar todos os dados permanentemente">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Apagar todos os dados
         </button>
       </div>
     </nav>
@@ -63,6 +68,23 @@
       <section id="secao-busca" class="secao"></section>
       <section id="secao-comparar" class="secao"></section>
     </main>
+  </div>
+
+  <!-- FAB flutuante -->
+  <div id="fab-container">
+    <div id="fab-menu">
+      <button class="fab-item" id="fab-receita">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Receita
+      </button>
+      <button class="fab-item" id="fab-gasto">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+        Gasto
+      </button>
+    </div>
+    <button id="fab-btn" title="Adicionar">
+      <svg id="fab-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
   </div>
 
   <script src="app.js"></script>

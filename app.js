@@ -8,13 +8,29 @@ let graficoInstancia = null;
 let filtro = { texto: '', categoriaId: '', valorMin: '', valorMax: '' };
 
 // Estado do filtro de receitas
-let filtroReceitas = { texto: '', valorMin: '', valorMax: '' };
+let filtroReceitas = { texto: '', valorMin: '', valorMax: '', categoriaId: '' };
 
 // Aba ativa no dashboard
 let abaAtivaDashboard = 'gastos';
 
 // Estado da tela de comparar meses
 let estadoComparar = null; // { mesA, anoA, mesB, anoB }
+let ordenacaoGastos = { col: 'data', dir: 'desc' };
+let ordenacaoReceitas = { col: 'data', dir: 'desc' };
+let filtroBusca = { tipo: 'todos', categoriaId: '', valorMin: '', valorMax: '' };
+
+function animarContador(el, valorFinal, formatFn, duracao = 500) {
+  if (!el) return;
+  const inicio = Date.now();
+  const tick = () => {
+    const t = Math.min(1, (Date.now() - inicio) / duracao);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatFn(valorFinal * ease);
+    if (t < 1) requestAnimationFrame(tick);
+    else el.textContent = formatFn(valorFinal);
+  };
+  requestAnimationFrame(tick);
+}
 
 // Dados CSV temporários durante importação
 let csvLinhas = [];
@@ -60,6 +76,59 @@ const ICONES = {
   recorrente: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:3px;opacity:0.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
 };
 
+// ===== Seletor de cor customizado =====
+
+const CORES_PALETA = [
+  '#e74c3c','#d63031','#e91e63','#fd79a8',
+  '#e67e22','#f39c12','#fdcb6e','#f1c40f',
+  '#2ecc71','#27ae60','#1abc9c','#00cec9',
+  '#3498db','#0984e3','#6c63ff','#9b59b6',
+  '#a29bfe','#795548','#636e72','#b2bec3',
+];
+
+function htmlSeletorCor(corSelecionada = '#6c63ff') {
+  const swatches = CORES_PALETA.map(cor =>
+    `<div class="swatch-cor ${cor.toLowerCase() === corSelecionada.toLowerCase() ? 'selecionada' : ''}" data-cor="${cor}" style="background:${cor}" title="${cor}"></div>`
+  ).join('');
+  const corCustom = CORES_PALETA.map(c => c.toLowerCase()).includes(corSelecionada.toLowerCase()) ? '#6c63ff' : corSelecionada;
+  const customSelecionada = !CORES_PALETA.map(c => c.toLowerCase()).includes(corSelecionada.toLowerCase());
+  return `
+    <input type="hidden" id="inp-cor-cat" value="${corSelecionada}" />
+    <div class="grade-cores" id="grade-cor-cat">
+      ${swatches}
+      <label class="swatch-cor swatch-custom ${customSelecionada ? 'selecionada' : ''}" title="Cor personalizada" style="${customSelecionada ? 'background:' + corSelecionada : ''}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <input type="color" class="inp-cor-custom" style="position:absolute;opacity:0;width:0;height:0" value="${customSelecionada ? corSelecionada : corCustom}" />
+      </label>
+    </div>
+  `;
+}
+
+function inicializarSeletorCor() {
+  const grade = document.getElementById('grade-cor-cat');
+  const inputHidden = document.getElementById('inp-cor-cat');
+  if (!grade || !inputHidden) return;
+
+  grade.querySelectorAll('.swatch-cor[data-cor]').forEach(s => {
+    s.addEventListener('click', () => {
+      grade.querySelectorAll('.swatch-cor').forEach(x => x.classList.remove('selecionada'));
+      s.classList.add('selecionada');
+      inputHidden.value = s.dataset.cor;
+    });
+  });
+
+  const customLabel = grade.querySelector('.swatch-custom');
+  const customInput = grade.querySelector('.inp-cor-custom');
+  if (customLabel && customInput) {
+    customInput.addEventListener('input', () => {
+      grade.querySelectorAll('.swatch-cor').forEach(x => x.classList.remove('selecionada'));
+      customLabel.classList.add('selecionada');
+      customLabel.style.background = customInput.value;
+      inputHidden.value = customInput.value;
+    });
+  }
+}
+
 // ===== Utilitários =====
 
 function gerarId() {
@@ -86,7 +155,12 @@ function mostrarToast(msg, tipo = 'normal', aoDesfazer = null) {
   const toast = document.getElementById('toast');
   if (_toastTimer) clearTimeout(_toastTimer);
 
-  toast.innerHTML = `<span>${msg}</span>`;
+  const iconeToast = tipo === 'sucesso'
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
+    : tipo === 'erro'
+    ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+    : '';
+  toast.innerHTML = `${iconeToast}<span>${msg}</span>`;
   if (aoDesfazer) {
     const btn = document.createElement('button');
     btn.id = 'toast-btn-desfazer';
@@ -133,7 +207,17 @@ function confirmarModal(titulo, mensagem, aoConfirmar) {
 // ===== Persistência =====
 
 function carregarCategorias() {
-  return JSON.parse(localStorage.getItem('categorias') || '[]');
+  const cats = JSON.parse(localStorage.getItem('categorias') || '[]');
+  // retrocompatibilidade: categorias sem tipo são de gastos
+  return cats.map(c => c.tipo ? c : { ...c, tipo: 'gastos' });
+}
+
+function categoriasGastos() {
+  return carregarCategorias().filter(c => c.tipo === 'gastos');
+}
+
+function categoriasReceitas() {
+  return carregarCategorias().filter(c => c.tipo === 'receitas');
 }
 
 function salvarCategorias(categorias) {
@@ -351,7 +435,7 @@ function limparFiltros() {
 }
 
 function temFiltroReceitasAtivo() {
-  return filtroReceitas.texto || filtroReceitas.valorMin || filtroReceitas.valorMax;
+  return filtroReceitas.texto || filtroReceitas.valorMin || filtroReceitas.valorMax || filtroReceitas.categoriaId;
 }
 
 function aplicarFiltrosReceitas(receitas) {
@@ -359,12 +443,13 @@ function aplicarFiltrosReceitas(receitas) {
     if (filtroReceitas.texto && !r.descricao.toLowerCase().includes(filtroReceitas.texto.toLowerCase())) return false;
     if (filtroReceitas.valorMin !== '' && r.valor < parseFloat(filtroReceitas.valorMin)) return false;
     if (filtroReceitas.valorMax !== '' && r.valor > parseFloat(filtroReceitas.valorMax)) return false;
+    if (filtroReceitas.categoriaId && r.categoriaId !== filtroReceitas.categoriaId) return false;
     return true;
   });
 }
 
 function limparFiltrosReceitas() {
-  filtroReceitas = { texto: '', valorMin: '', valorMax: '' };
+  filtroReceitas = { texto: '', valorMin: '', valorMax: '', categoriaId: '' };
   renderizarDashboard();
 }
 
@@ -393,9 +478,48 @@ function receitasDoMes() {
 
 function renderizarDashboard() {
   const secao = document.getElementById('secao-dashboard');
+
+  // Onboarding: sem nenhum dado ainda
+  const todosGastos = carregarGastos();
+  const todasReceitas = carregarReceitas();
+  if (todosGastos.length === 0 && todasReceitas.length === 0) {
+    secao.innerHTML = `
+      <div id="tela-onboarding">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="15" width="60" height="50" rx="8" stroke="currentColor" stroke-width="3"/>
+          <path d="M10 28h60" stroke="currentColor" stroke-width="3"/>
+          <circle cx="40" cy="50" r="10" stroke="currentColor" stroke-width="3"/>
+          <path d="M40 44v6l4 3" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <h2>Bem-vindo ao Minhas Finanças!</h2>
+        <p>Você ainda não tem nenhum dado registrado. Adicione seu primeiro gasto ou receita para começar a acompanhar suas finanças.</p>
+        <div class="onboarding-acoes">
+          <button class="btn btn-primario" id="ob-btn-gasto" style="display:flex;align-items:center;gap:8px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar Gasto
+          </button>
+          <button class="btn btn-sucesso" id="ob-btn-receita" style="display:flex;align-items:center;gap:8px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar Receita
+          </button>
+          <button class="btn btn-secundario" id="ob-btn-importar" style="display:flex;align-items:center;gap:8px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar CSV
+          </button>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+    document.getElementById('ob-btn-gasto').addEventListener('click', abrirModalAdicionarGasto);
+    document.getElementById('ob-btn-receita').addEventListener('click', () => abrirModalReceita());
+    document.getElementById('ob-btn-importar').addEventListener('click', () => irParaSecao('importar'));
+    return;
+  }
+
   const gastos = gastosDoMes();
   const gastosFiltrados = aplicarFiltros(gastos);
-  const categorias = carregarCategorias();
+  const categorias = categoriasGastos();
+  const catsReceitas = categoriasReceitas();
   const receitas = receitasDoMes();
   const receitasFiltradas = aplicarFiltrosReceitas(receitas);
   const totalGastos = gastos.reduce((s, g) => s + g.valor, 0);
@@ -403,11 +527,22 @@ function renderizarDashboard() {
   const saldo = totalReceitas - totalGastos;
   const qtd = gastos.length;
 
-  // Agrupamento por categoria
+  // Agrupamento por categoria — gastos
   const porCategoria = {};
   gastos.forEach(g => {
     porCategoria[g.categoriaId] = (porCategoria[g.categoriaId] || 0) + g.valor;
   });
+
+  // Agrupamento por categoria — receitas
+  const porCategoriaReceitas = {};
+  receitas.forEach(r => {
+    if (r.categoriaId) porCategoriaReceitas[r.categoriaId] = (porCategoriaReceitas[r.categoriaId] || 0) + r.valor;
+  });
+
+  // Pendentes
+  const gastosPendentes = gastos.filter(g => g.status === 'pendente');
+  const totalPendente = gastosPendentes.reduce((s, g) => s + g.valor, 0);
+  const qtdPendente = gastosPendentes.length;
 
   const acentoSaldo = saldo >= 0 ? 'acento-verde' : 'acento-vermelho';
 
@@ -426,7 +561,7 @@ function renderizarDashboard() {
           <span class="rotulo">Receitas do mês</span>
           <i data-lucide="trending-up" class="card-resumo-icone" style="color:var(--cor-sucesso)"></i>
         </div>
-        <span class="valor">${formatarMoeda(totalReceitas)}</span>
+        <span id="val-receitas" class="valor">${formatarMoeda(totalReceitas)}</span>
         <span class="sub">${receitas.length} ${receitas.length === 1 ? 'receita' : 'receitas'}</span>
       </div>
       <div class="card-resumo acento-vermelho">
@@ -434,7 +569,7 @@ function renderizarDashboard() {
           <span class="rotulo">Gastos do mês</span>
           <i data-lucide="trending-down" class="card-resumo-icone" style="color:var(--cor-perigo)"></i>
         </div>
-        <span class="valor">${formatarMoeda(totalGastos)}</span>
+        <span id="val-gastos" class="valor">${formatarMoeda(totalGastos)}</span>
         <span class="sub">${qtd} ${qtd === 1 ? 'gasto' : 'gastos'}</span>
       </div>
       <div class="card-resumo ${acentoSaldo}">
@@ -442,7 +577,7 @@ function renderizarDashboard() {
           <span class="rotulo">Saldo</span>
           <i data-lucide="scale" class="card-resumo-icone" style="color:${saldo >= 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)'}"></i>
         </div>
-        <span class="valor" style="color:${saldo >= 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)'}">${formatarMoeda(saldo)}</span>
+        <span id="val-saldo" class="valor" style="color:${saldo >= 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)'}">${formatarMoeda(saldo)}</span>
         <span class="sub">${saldo >= 0 ? 'no positivo' : 'no negativo'}</span>
       </div>
       <div class="card-resumo acento-amarelo">
@@ -450,16 +585,25 @@ function renderizarDashboard() {
           <span class="rotulo">Maior gasto</span>
           <i data-lucide="zap" class="card-resumo-icone" style="color:#f39c12"></i>
         </div>
-        <span class="valor">${gastos.length ? formatarMoeda(Math.max(...gastos.map(g => g.valor))) : '—'}</span>
+        <span id="val-maior" class="valor">${gastos.length ? formatarMoeda(Math.max(...gastos.map(g => g.valor))) : '—'}</span>
         <span class="sub">${gastos.length ? gastos.reduce((a, b) => a.valor > b.valor ? a : b).descricao : 'Nenhum gasto ainda'}</span>
+      </div>
+      <div id="card-pendente" class="card-resumo ${qtdPendente > 0 ? 'acento-vermelho' : 'acento-azul'}">
+        <div class="card-resumo-topo">
+          <span class="rotulo">Pendente</span>
+          <i id="icone-pendente" data-lucide="clock" class="card-resumo-icone" style="color:${qtdPendente > 0 ? 'var(--cor-perigo)' : 'var(--cor-texto-suave)'}"></i>
+        </div>
+        <span id="valor-pendente" class="valor" style="${qtdPendente > 0 ? 'color:var(--cor-perigo)' : 'color:var(--cor-texto-suave)'}">${qtdPendente > 0 ? formatarMoeda(totalPendente) : '—'}</span>
+        <span id="sub-pendente" class="sub">${qtdPendente > 0 ? `${qtdPendente} gasto${qtdPendente > 1 ? 's' : ''} a pagar` : 'Nenhum pendente'}</span>
       </div>
     </div>
     <div id="grid-dashboard">
-      <div id="card-grafico" style="display:${abaAtivaDashboard === 'gastos' ? 'flex' : 'none'};flex-direction:column">
-        <h2>Por categoria</h2>
-        ${gastos.length ? `<canvas id="canvas-grafico"></canvas><div id="legenda-grafico"></div>` : '<p style="color:var(--cor-texto-suave);font-size:14px;margin-top:32px">Nenhum gasto neste mês</p>'}
+      <div id="card-grafico" style="flex-direction:column">
+        <h2 id="titulo-grafico">Por categoria</h2>
+        <canvas id="canvas-grafico"></canvas>
+        <div id="legenda-grafico"></div>
       </div>
-      <div id="card-lista" style="${abaAtivaDashboard === 'receitas' ? 'grid-column: 1 / -1' : ''}">
+      <div id="card-lista">
         <div id="abas-dashboard">
           <div id="abas-lista">
             <button class="aba-btn ${abaAtivaDashboard === 'gastos' ? 'ativa' : ''}" data-aba="gastos">
@@ -470,19 +614,23 @@ function renderizarDashboard() {
             </button>
           </div>
           <div id="abas-acoes">
-            <button id="btn-excluir-selecionados" class="btn btn-perigo"
-              style="display:none;padding:7px 14px;font-size:13px">
-              Excluir (<span id="contador-selecionados">0</span>)
+            <button id="btn-excluir-selecionados" class="btn btn-excluir-sel"
+              style="display:none;align-items:center;gap:8px">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Excluir <span id="contador-selecionados">0</span>
             </button>
-            <button id="btn-excluir-selecionados-receitas" class="btn btn-perigo"
-              style="display:none;padding:7px 14px;font-size:13px">
-              Excluir (<span id="contador-selecionados-receitas">0</span>)
+            <button id="btn-excluir-selecionados-receitas" class="btn btn-excluir-sel"
+              style="display:none;align-items:center;gap:8px">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Excluir <span id="contador-selecionados-receitas">0</span>
             </button>
-            <button id="btn-adicionar-rapido" class="btn btn-primario" style="display:${abaAtivaDashboard === 'gastos' ? 'flex' : 'none'};align-items:center;gap:6px">
-              <span style="font-size:16px">＋</span> Adicionar Gasto
+            <button id="btn-adicionar-rapido" class="btn btn-add-dash btn-add-gasto" style="display:${abaAtivaDashboard === 'gastos' ? 'flex' : 'none'}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Gasto
             </button>
-            <button id="btn-adicionar-receita" class="btn btn-sucesso" style="display:${abaAtivaDashboard === 'receitas' ? 'flex' : 'none'};align-items:center;gap:6px">
-              <span style="font-size:16px">＋</span> Adicionar Receita
+            <button id="btn-adicionar-receita" class="btn btn-add-dash btn-add-receita" style="display:${abaAtivaDashboard === 'receitas' ? 'flex' : 'none'}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Receita
             </button>
             <button id="btn-exportar-csv" class="btn btn-secundario" style="display:${abaAtivaDashboard === 'gastos' ? 'flex' : 'none'};align-items:center;gap:6px">
               <span>↓</span> Exportar CSV
@@ -508,6 +656,7 @@ function renderizarDashboard() {
         <div id="aba-receitas" style="display:${abaAtivaDashboard === 'receitas' ? 'block' : 'none'}">
           <div id="barra-filtro-receitas" class="barra-filtro">
             <input type="text" id="filtro-texto-receitas" placeholder="Buscar descrição..." value="${filtroReceitas.texto}" />
+            ${htmlSelectCategoria('filtro-cat-receitas', catsReceitas, filtroReceitas.categoriaId, 'Todas as categorias')}
             <input type="number" id="filtro-valor-min-receitas" placeholder="Valor mín." value="${filtroReceitas.valorMin}" step="0.01" min="0" />
             <input type="number" id="filtro-valor-max-receitas" placeholder="Valor máx." value="${filtroReceitas.valorMax}" step="0.01" min="0" />
             ${temFiltroReceitasAtivo() ? `<button id="btn-limpar-filtro-receitas" class="btn-limpar-filtro">✕ Limpar</button>` : ''}
@@ -523,8 +672,16 @@ function renderizarDashboard() {
 
   lucide.createIcons();
 
-  if (gastos.length) {
-    desenharGrafico(porCategoria, categorias, totalGastos);
+  // Desenha gráfico inicial conforme aba ativa
+  const tituloGraficoDash = document.getElementById('titulo-grafico');
+  if (abaAtivaDashboard === 'gastos') {
+    if (tituloGraficoDash) tituloGraficoDash.textContent = 'Gastos por categoria';
+    if (gastos.length) desenharGrafico(porCategoria, categorias, totalGastos);
+    else { const leg = document.getElementById('legenda-grafico'); if (leg) leg.innerHTML = '<p style="color:var(--cor-texto-suave);font-size:14px">Nenhum gasto neste mês</p>'; }
+  } else {
+    if (tituloGraficoDash) tituloGraficoDash.textContent = 'Receitas por categoria';
+    if (Object.keys(porCategoriaReceitas).length) desenharGrafico(porCategoriaReceitas, catsReceitas, totalReceitas);
+    else { const leg = document.getElementById('legenda-grafico'); if (leg) leg.innerHTML = '<p style="color:var(--cor-texto-suave);font-size:14px">Sem categorias de receitas neste mês</p>'; }
   }
 
   // Eventos da tabela
@@ -556,8 +713,29 @@ function renderizarDashboard() {
       abaReceitas.style.display = abaAtivaDashboard === 'receitas' ? 'block' : 'none';
       secao.querySelector('#btn-adicionar-rapido').style.display = abaAtivaDashboard === 'gastos' ? 'flex' : 'none';
       secao.querySelector('#btn-adicionar-receita').style.display = abaAtivaDashboard === 'receitas' ? 'flex' : 'none';
-      cardGrafico.style.display = abaAtivaDashboard === 'gastos' ? 'flex' : 'none';
-      cardLista.style.gridColumn = abaAtivaDashboard === 'receitas' ? '1 / -1' : '';
+      // Atualiza gráfico conforme aba ativa
+      const tituloGrafico = secao.querySelector('#titulo-grafico');
+      if (abaAtivaDashboard === 'gastos') {
+        if (tituloGrafico) tituloGrafico.textContent = 'Gastos por categoria';
+        const gs = gastosDoMes();
+        const catsG = categoriasGastos();
+        const porCatG = {};
+        gs.forEach(g => { porCatG[g.categoriaId] = (porCatG[g.categoriaId] || 0) + g.valor; });
+        const totG = gs.reduce((s, g) => s + g.valor, 0);
+        if (totG > 0) desenharGrafico(porCatG, catsG, totG);
+        else { if (graficoInstancia) { graficoInstancia.destroy(); graficoInstancia = null; }
+               const leg = document.getElementById('legenda-grafico'); if (leg) leg.innerHTML = '<p style="color:var(--cor-texto-suave);font-size:14px">Nenhum gasto neste mês</p>'; }
+      } else {
+        if (tituloGrafico) tituloGrafico.textContent = 'Receitas por categoria';
+        const rs = receitasDoMes();
+        const catsR = categoriasReceitas();
+        const porCatR = {};
+        rs.forEach(r => { if (r.categoriaId) porCatR[r.categoriaId] = (porCatR[r.categoriaId] || 0) + r.valor; });
+        const totR = rs.reduce((s, r) => s + r.valor, 0);
+        if (Object.keys(porCatR).length) desenharGrafico(porCatR, catsR, totR);
+        else { if (graficoInstancia) { graficoInstancia.destroy(); graficoInstancia = null; }
+               const leg = document.getElementById('legenda-grafico'); if (leg) leg.innerHTML = '<p style="color:var(--cor-texto-suave);font-size:14px">Sem categorias de receitas neste mês</p>'; }
+      }
       secao.querySelector('#btn-exportar-csv').style.display = abaAtivaDashboard === 'gastos' ? 'flex' : 'none';
       secao.querySelector('#btn-exportar-csv-receitas').style.display = abaAtivaDashboard === 'receitas' ? 'flex' : 'none';
       secao.querySelector('#btn-excluir-selecionados').style.display = 'none';
@@ -621,6 +799,10 @@ function renderizarDashboard() {
     const btnLimpar = secao.querySelector('#btn-limpar-filtro-receitas');
     if (btnLimpar) btnLimpar.addEventListener('click', limparFiltrosReceitas);
   };
+  inicializarSelectCategoria('filtro-cat-receitas', catId => {
+    filtroReceitas.categoriaId = catId || '';
+    atualizarTabelaReceitas();
+  });
   secao.querySelector('#filtro-texto-receitas').addEventListener('input', e => {
     filtroReceitas.texto = e.target.value;
     atualizarTabelaReceitas();
@@ -635,13 +817,20 @@ function renderizarDashboard() {
   });
   const btnLimparReceitas = secao.querySelector('#btn-limpar-filtro-receitas');
   if (btnLimparReceitas) btnLimparReceitas.addEventListener('click', limparFiltrosReceitas);
+
+  // Atualiza saldo sidebar e anima contadores
+  animarContador(document.getElementById('val-receitas'), totalReceitas, v => formatarMoeda(v));
+  animarContador(document.getElementById('val-gastos'), totalGastos, v => formatarMoeda(v));
+  animarContador(document.getElementById('val-saldo'), Math.abs(saldo), v => (saldo < 0 ? '-' : '') + formatarMoeda(v));
+  if (gastos.length) animarContador(document.getElementById('val-maior'), Math.max(...gastos.map(g => g.valor)), v => formatarMoeda(v));
+  if (qtdPendente > 0) animarContador(document.getElementById('valor-pendente'), totalPendente, v => formatarMoeda(v));
 }
 
 function atualizarTabela() {
   const secao = document.getElementById('secao-dashboard');
   const gastos = gastosDoMes();
   const gastosFiltrados = aplicarFiltros(gastos);
-  const categorias = carregarCategorias();
+  const categorias = categoriasGastos();
 
   // Atualiza contagem
   const info = secao.querySelector('#info-filtro');
@@ -675,6 +864,25 @@ function duplicarGasto(id) {
   abrirModalGasto(gasto, true);
 }
 
+function atualizarCardPendente() {
+  const card = document.getElementById('card-pendente');
+  if (!card) return;
+  const gastosPend = gastosDoMes().filter(g => g.status === 'pendente');
+  const total = gastosPend.reduce((s, g) => s + g.valor, 0);
+  const qtd = gastosPend.length;
+  const temPend = qtd > 0;
+  card.className = 'card-resumo ' + (temPend ? 'acento-vermelho' : 'acento-azul');
+  const icone = document.getElementById('icone-pendente');
+  if (icone) icone.style.color = temPend ? 'var(--cor-perigo)' : 'var(--cor-texto-suave)';
+  const valor = document.getElementById('valor-pendente');
+  if (valor) {
+    valor.style.color = temPend ? 'var(--cor-perigo)' : 'var(--cor-texto-suave)';
+    valor.textContent = temPend ? formatarMoeda(total) : '—';
+  }
+  const sub = document.getElementById('sub-pendente');
+  if (sub) sub.textContent = temPend ? `${qtd} gasto${qtd > 1 ? 's' : ''} a pagar` : 'Nenhum pendente';
+}
+
 function toggleStatus(id) {
   const gastos = carregarGastos();
   const idx = gastos.findIndex(g => g.id === id);
@@ -682,9 +890,18 @@ function toggleStatus(id) {
   gastos[idx].status = gastos[idx].status === 'pendente' ? 'pago' : 'pendente';
   salvarGastos(gastos);
   atualizarTabela();
+  atualizarCardPendente();
 }
 
 function registrarEventosTabela(container) {
+  container.querySelectorAll('[data-sort-gastos]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sortGastos;
+      if (ordenacaoGastos.col === col) ordenacaoGastos.dir = ordenacaoGastos.dir === 'asc' ? 'desc' : 'asc';
+      else { ordenacaoGastos.col = col; ordenacaoGastos.dir = 'desc'; }
+      atualizarTabela();
+    });
+  });
   container.querySelectorAll('[data-editar]').forEach(btn =>
     btn.addEventListener('click', () => abrirModalEdicao(btn.dataset.editar)));
   container.querySelectorAll('[data-excluir]').forEach(btn =>
@@ -745,7 +962,14 @@ function renderizarTabelaGastos(gastos, categorias) {
       </div>`;
   }
 
-  const gastosOrdenados = [...gastos].sort((a, b) => b.data.localeCompare(a.data));
+  const gastosOrdenados = [...gastos].sort((a, b) => {
+    const { col, dir } = ordenacaoGastos;
+    let cmp = 0;
+    if (col === 'data') cmp = a.data.localeCompare(b.data);
+    else if (col === 'valor') cmp = a.valor - b.valor;
+    else if (col === 'descricao') cmp = a.descricao.localeCompare(b.descricao);
+    return dir === 'asc' ? cmp : -cmp;
+  });
 
   const linhas = gastosOrdenados.map(g => {
     const cat = categorias.find(c => c.id === g.categoriaId);
@@ -758,6 +982,7 @@ function renderizarTabelaGastos(gastos, categorias) {
         <td>${formatarData(g.data)}</td>
         <td>
           ${g.recorrente ? `<span title="Gasto recorrente">${ICONES.recorrente}</span>` : ''}${g.descricao}
+          ${g.obs ? `<div class="obs-gasto" title="${g.obs}">${g.obs}</div>` : ''}
         </td>
         <td><span class="badge-categoria" style="background:${corCat}">${nomeCat}</span></td>
         <td><strong>${formatarMoeda(g.valor)}</strong></td>
@@ -782,10 +1007,10 @@ function renderizarTabelaGastos(gastos, categorias) {
       <thead>
         <tr>
           <th><input type="checkbox" id="chk-todos-lista" title="Selecionar todos" /></th>
-          <th>Data</th>
-          <th>Descrição</th>
+          <th class="th-sort ${ordenacaoGastos.col==='data'?'ativa':''}" data-sort-gastos="data">Data <span class="th-sort-icone">${ordenacaoGastos.col==='data'?(ordenacaoGastos.dir==='asc'?'↑':'↓'):'↕'}</span></th>
+          <th class="th-sort ${ordenacaoGastos.col==='descricao'?'ativa':''}" data-sort-gastos="descricao">Descrição <span class="th-sort-icone">${ordenacaoGastos.col==='descricao'?(ordenacaoGastos.dir==='asc'?'↑':'↓'):'↕'}</span></th>
           <th>Categoria</th>
-          <th>Valor</th>
+          <th class="th-sort ${ordenacaoGastos.col==='valor'?'ativa':''}" data-sort-gastos="valor">Valor <span class="th-sort-icone">${ordenacaoGastos.col==='valor'?(ordenacaoGastos.dir==='asc'?'↑':'↓'):'↕'}</span></th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -1001,9 +1226,8 @@ function inicializarSelectCategoria(idInput, aoMudar = null) {
 function atualizarSelectCategorias(catIdSelecionada = null) {
   const wrapper = document.getElementById('wrapper-inp-categoria');
   if (!wrapper) return;
-  const categorias = carregarCategorias();
   const temp = document.createElement('div');
-  temp.innerHTML = htmlSelectCategoria('inp-categoria', categorias, catIdSelecionada);
+  temp.innerHTML = htmlSelectCategoria('inp-categoria', categoriasGastos(), catIdSelecionada);
   wrapper.replaceWith(temp.firstElementChild);
   inicializarSelectCategoria('inp-categoria');
 }
@@ -1012,7 +1236,7 @@ function renderizarFormularioGasto(gasto = null) {
   const secao = document.getElementById('secao-adicionar');
   const edicao = !!gasto;
   const hoje = new Date().toISOString().split('T')[0];
-  const categorias = carregarCategorias();
+  const categorias = categoriasGastos();
 
   secao.innerHTML = `
     <h1 class="titulo-secao">${edicao ? 'Editar Gasto' : 'Adicionar Gasto'}</h1>
@@ -1057,7 +1281,7 @@ function renderizarFormularioGasto(gasto = null) {
           <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px;padding-top:22px">
             <input type="checkbox" id="inp-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${gasto && gasto.recorrente ? 'checked' : ''} />
             <label for="inp-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-              Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mês)</span>
+              Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
             </label>
           </div>
         </div>
@@ -1090,52 +1314,75 @@ function abrirModalCategoriaRapido() {
 }
 
 function abrirModalCategoriaCSV() {
+  const esReceita = tipoImportacaoCSV === 'receitas';
+  const tipo = esReceita ? 'receitas' : 'gastos';
+
   abrirModalNovaCategoria(novaId => {
-    const categorias = carregarCategorias();
+    const cats = esReceita ? categoriasReceitas() : categoriasGastos();
 
     // Atualiza dropdown de lote (CSV bancário)
     const slotLote = document.getElementById('slot-lote-cat');
     if (slotLote) {
-      slotLote.innerHTML = htmlSelectCategoria('inp-cat-lote', categorias, null, '— selecione —');
+      slotLote.innerHTML = htmlSelectCategoria('inp-cat-lote', cats, null, '— selecione —');
       inicializarSelectCategoria('inp-cat-lote');
     }
 
-    // Atualiza dropdowns individuais de cada linha (CSV bancário) preservando seleção atual
+    // Atualiza dropdowns individuais de cada linha (CSV bancário)
     document.querySelectorAll('#corpo-revisao tr').forEach(tr => {
       const idx = tr.dataset.idx;
       const idInput = `inp-cat-csv-${idx}`;
       const valorAtual = document.getElementById(idInput)?.value;
       const td = tr.querySelector('td:last-child');
       if (td) {
-        td.innerHTML = htmlSelectCategoria(idInput, categorias, valorAtual || null, 'Selecione...');
+        td.innerHTML = htmlSelectCategoria(idInput, cats, valorAtual || null, 'Selecione...');
         inicializarSelectCategoria(idInput);
       }
     });
 
-    // Atualiza dropdown de lote (planilha anual)
-    const slotLotePlan = document.getElementById('slot-lote-cat-planilha');
-    if (slotLotePlan) {
-      slotLotePlan.innerHTML = htmlSelectCategoria('inp-cat-lote-planilha', categorias, null, '— selecione —');
-      inicializarSelectCategoria('inp-cat-lote-planilha');
+    if (esReceita) {
+      // Atualiza dropdown de lote (planilha anual de receitas)
+      const slotLoteRec = document.getElementById('slot-lote-cat-rec');
+      if (slotLoteRec) {
+        slotLoteRec.innerHTML = htmlSelectCategoria('inp-cat-lote-plan-rec', cats, null, '— selecione —');
+        inicializarSelectCategoria('inp-cat-lote-plan-rec');
+      }
+      // Atualiza dropdowns individuais (planilha anual de receitas)
+      document.querySelectorAll('.chk-plan-rec').forEach(chk => {
+        const i = chk.dataset.idx;
+        const idInput = `inp-cat-plan-rec-${i}`;
+        const valorAtual = document.getElementById(idInput)?.value;
+        const td = chk.closest('tr')?.querySelector('td:last-child');
+        if (td) {
+          td.innerHTML = htmlSelectCategoria(idInput, cats, valorAtual || null, 'Selecione...');
+          inicializarSelectCategoria(idInput);
+        }
+      });
+    } else {
+      // Atualiza dropdown de lote (planilha anual de gastos)
+      const slotLotePlan = document.getElementById('slot-lote-cat-planilha');
+      if (slotLotePlan) {
+        slotLotePlan.innerHTML = htmlSelectCategoria('inp-cat-lote-planilha', cats, null, '— selecione —');
+        inicializarSelectCategoria('inp-cat-lote-planilha');
+      }
+      // Atualiza dropdowns individuais (planilha anual de gastos)
+      document.querySelectorAll('.chk-plan').forEach(chk => {
+        const i = chk.dataset.idx;
+        const idInput = `inp-cat-plan-${i}`;
+        const valorAtual = document.getElementById(idInput)?.value;
+        const td = chk.closest('tr')?.querySelector('td:last-child');
+        if (td) {
+          td.innerHTML = htmlSelectCategoria(idInput, cats, valorAtual || null, 'Selecione...');
+          inicializarSelectCategoria(idInput);
+        }
+      });
     }
-
-    // Atualiza dropdowns individuais de cada linha (planilha anual) preservando seleção atual
-    document.querySelectorAll('.chk-plan').forEach(chk => {
-      const i = chk.dataset.idx;
-      const idInput = `inp-cat-plan-${i}`;
-      const valorAtual = document.getElementById(idInput)?.value;
-      const td = chk.closest('tr')?.querySelector('td:last-child');
-      if (td) {
-        td.innerHTML = htmlSelectCategoria(idInput, categorias, valorAtual || null, 'Selecione...');
-        inicializarSelectCategoria(idInput);
-      }
-    });
-  });
+  }, null, tipo);
 }
 
-function abrirModalNovaCategoria(callback, aoCancelar = null) {
+function abrirModalNovaCategoria(callback, aoCancelar = null, tipo = 'gastos') {
   const modal = document.getElementById('modal');
   const overlay = document.getElementById('overlay-modal');
+  const tipoNovaCategoria = tipo;
 
   const cancelar = aoCancelar || fecharModal;
 
@@ -1148,8 +1395,8 @@ function abrirModalNovaCategoria(callback, aoCancelar = null) {
         <input type="text" id="inp-nome-cat" required maxlength="40" placeholder="Ex: Academia" />
       </div>
       <div class="form-grupo">
-        <label for="inp-cor-cat">Cor</label>
-        <input type="color" id="inp-cor-cat" value="#6c63ff" style="height:40px;padding:2px 6px" />
+        <label>Cor</label>
+        ${htmlSeletorCor()}
       </div>
       <div class="acoes-form">
         <button type="submit" class="btn btn-primario">Criar</button>
@@ -1159,6 +1406,7 @@ function abrirModalNovaCategoria(callback, aoCancelar = null) {
   `;
 
   overlay.classList.add('visivel');
+  inicializarSeletorCor();
 
   document.getElementById('btn-fechar-modal').addEventListener('click', cancelar);
   document.getElementById('btn-cancelar-modal').addEventListener('click', cancelar);
@@ -1172,7 +1420,7 @@ function abrirModalNovaCategoria(callback, aoCancelar = null) {
 
     const categorias = carregarCategorias();
     const novaId = gerarId();
-    categorias.push({ id: novaId, nome, cor });
+    categorias.push({ id: novaId, nome, cor, tipo: tipoNovaCategoria });
     salvarCategorias(categorias);
     fecharModal();
     mostrarToast('Categoria criada!', 'sucesso');
@@ -1187,6 +1435,8 @@ function salvarGastoDoForm(idExistente, aoSalvar = null) {
   const categoriaId = document.getElementById('inp-categoria').value;
   const recorrente = document.getElementById('inp-recorrente').checked;
   const status = document.getElementById('inp-status').value;
+  const obsEl = document.getElementById('inp-obs');
+  const obs = obsEl ? obsEl.value.trim() : '';
 
   if (!valor || valor <= 0) { mostrarToast('Valor inválido.', 'erro'); return; }
   if (!data) { mostrarToast('Data inválida.', 'erro'); return; }
@@ -1198,11 +1448,11 @@ function salvarGastoDoForm(idExistente, aoSalvar = null) {
   if (idExistente) {
     const idx = gastos.findIndex(g => g.id === idExistente);
     if (idx !== -1) {
-      gastos[idx] = { id: idExistente, data, descricao, valor, categoriaId, recorrente, status };
+      gastos[idx] = { id: idExistente, data, descricao, valor, categoriaId, recorrente, status, obs: obs || undefined };
     }
     mostrarToast('Gasto atualizado!', 'sucesso');
   } else {
-    gastos.push({ id: gerarId(), data, descricao, valor, categoriaId, recorrente, status });
+    gastos.push({ id: gerarId(), data, descricao, valor, categoriaId, recorrente, status, obs: obs || undefined });
     mostrarToast('Gasto adicionado!', 'sucesso');
   }
 
@@ -1222,7 +1472,7 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
   const hoje = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
   const overlay = document.getElementById('overlay-modal');
   const modal = document.getElementById('modal');
-  const categorias = carregarCategorias();
+  const categorias = categoriasGastos();
 
   const isEdicao = !!gasto && !isDuplicar;
   const titulo = isEdicao ? 'Editar Gasto' : isDuplicar ? 'Duplicar Gasto' : 'Adicionar Gasto';
@@ -1258,6 +1508,10 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
         <div id="sugestao-categoria" style="font-size:12px;color:var(--cor-texto-suave);margin-top:5px;min-height:16px"></div>
       </div>
       <div class="form-grupo">
+        <label for="inp-obs">Observação <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(opcional)</span></label>
+        <input type="text" id="inp-obs" placeholder="Ex: nota fiscal, reembolsável..." value="${gasto ? (gasto.obs || '') : ''}" maxlength="200" />
+      </div>
+      <div class="form-grupo">
         <label>Categoria</label>
         <div style="display:flex;gap:8px;align-items:center">
           ${htmlSelectCategoria('inp-categoria', categorias, catPreenchida)}
@@ -1275,7 +1529,7 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
         <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px;padding-top:22px">
           <input type="checkbox" id="inp-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${recorrentePreenchido ? 'checked' : ''} />
           <label for="inp-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-            Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mês)</span>
+            Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
           </label>
         </div>
       </div>
@@ -1480,8 +1734,8 @@ function renderizarImportarCSV() {
 
   // Injeta dropdown customizado de lote
   const slotLote = document.getElementById('slot-lote-cat');
-  const categorias = carregarCategorias();
-  slotLote.innerHTML = htmlSelectCategoria('inp-cat-lote', categorias, null, '— selecione —');
+  const catsLote = tipoImportacaoCSV === 'receitas' ? categoriasReceitas() : categoriasGastos();
+  slotLote.innerHTML = htmlSelectCategoria('inp-cat-lote', catsLote, null, '— selecione —');
   inicializarSelectCategoria('inp-cat-lote');
 
   configurarEventosUpload();
@@ -1576,7 +1830,7 @@ function exportarCSV(gastos, categorias, nomeArquivo) {
     return;
   }
 
-  const cabecalho = ['Data', 'Descrição', 'Categoria', 'Valor', 'Status', 'Recorrente'];
+  const cabecalho = ['Data', 'Descrição', 'Observação', 'Categoria', 'Valor', 'Status', 'Recorrente'];
 
   const linhas = gastos
     .slice()
@@ -1587,6 +1841,7 @@ function exportarCSV(gastos, categorias, nomeArquivo) {
       return [
         `${dia}/${mes}/${ano}`,
         `"${(g.descricao || '').replace(/"/g, '""')}"`,
+        `"${(g.obs || '').replace(/"/g, '""')}"`,
         `"${cat ? cat.nome.replace(/"/g, '""') : 'Sem categoria'}"`,
         g.valor.toFixed(2).replace('.', ','),
         g.status === 'pendente' ? 'Pendente' : 'Pago',
@@ -1611,15 +1866,18 @@ function exportarCSVReceitas(receitas, nomeArquivo) {
     mostrarToast('Nenhuma receita para exportar.', 'erro');
     return;
   }
-  const cabecalho = ['Data', 'Descrição', 'Valor', 'Recorrente'];
+  const categorias = carregarCategorias();
+  const cabecalho = ['Data', 'Descrição', 'Categoria', 'Valor', 'Recorrente'];
   const linhas = receitas
     .slice()
     .sort((a, b) => a.data.localeCompare(b.data))
     .map(r => {
       const [ano, mes, dia] = r.data.split('-');
+      const cat = r.categoriaId ? categorias.find(c => c.id === r.categoriaId) : null;
       return [
         `${dia}/${mes}/${ano}`,
         `"${(r.descricao || '').replace(/"/g, '""')}"`,
+        cat ? `"${cat.nome.replace(/"/g, '""')}"` : '',
         r.valor.toFixed(2).replace('.', ','),
         r.recorrente ? 'Sim' : 'Não',
       ].join(';');
@@ -1650,32 +1908,51 @@ function renderizarTabelaReceitas(receitas) {
         <p class="sub-vazio">Adicione uma receita manualmente ou importe um arquivo CSV</p>
       </div>`;
   }
+  const categorias = carregarCategorias();
   const linhas = receitas
     .slice()
-    .sort((a, b) => b.data.localeCompare(a.data))
-    .map(r => `
+    .sort((a, b) => {
+      const { col, dir } = ordenacaoReceitas;
+      let cmp = 0;
+      if (col === 'data') cmp = a.data.localeCompare(b.data);
+      else if (col === 'valor') cmp = a.valor - b.valor;
+      else if (col === 'descricao') cmp = a.descricao.localeCompare(b.descricao);
+      return dir === 'asc' ? cmp : -cmp;
+    })
+    .map(r => {
+      const cat = r.categoriaId ? categorias.find(c => c.id === r.categoriaId) : null;
+      return `
       <tr>
         <td><input type="checkbox" class="chk-receita" data-id="${r.id}" /></td>
         <td>${formatarData(r.data)}</td>
         <td>${r.recorrente ? `<span title="Receita recorrente">${ICONES.recorrente}</span>` : ''}${r.descricao}</td>
+        <td>
+          ${cat
+            ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;background:${cat.cor}22;color:${cat.cor};border:1px solid ${cat.cor}44;border-radius:20px;padding:2px 10px;font-weight:600;white-space:nowrap">
+                <span style="width:7px;height:7px;border-radius:50%;background:${cat.cor};flex-shrink:0"></span>${cat.nome}
+               </span>`
+            : '<span style="color:var(--cor-texto-suave);font-size:12px">—</span>'}
+        </td>
         <td style="color:var(--cor-sucesso);font-weight:600">${formatarMoeda(r.valor)}</td>
         <td>
           <div style="display:flex;gap:8px">
             <button class="btn-acao btn-editar-receita" data-id="${r.id}">Editar</button>
+            <button class="btn-acao btn-duplicar-receita" data-id="${r.id}" title="Duplicar receita">Duplicar</button>
             <button class="btn-acao excluir btn-excluir-receita" data-id="${r.id}">Excluir</button>
           </div>
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
 
   return `
     <table class="tabela-gastos">
       <thead>
         <tr>
           <th><input type="checkbox" id="chk-todos-receitas" title="Selecionar todos" /></th>
-          <th>Data</th>
-          <th>Descrição</th>
-          <th>Valor</th>
+          <th class="th-sort ${ordenacaoReceitas.col==='data'?'ativa':''}" data-sort-receitas="data">Data <span class="th-sort-icone">${ordenacaoReceitas.col==='data'?(ordenacaoReceitas.dir==='asc'?'↑':'↓'):'↕'}</span></th>
+          <th class="th-sort ${ordenacaoReceitas.col==='descricao'?'ativa':''}" data-sort-receitas="descricao">Descrição <span class="th-sort-icone">${ordenacaoReceitas.col==='descricao'?(ordenacaoReceitas.dir==='asc'?'↑':'↓'):'↕'}</span></th>
+          <th>Categoria</th>
+          <th class="th-sort ${ordenacaoReceitas.col==='valor'?'ativa':''}" data-sort-receitas="valor">Valor <span class="th-sort-icone">${ordenacaoReceitas.col==='valor'?(ordenacaoReceitas.dir==='asc'?'↑':'↓'):'↕'}</span></th>
           <th></th>
         </tr>
       </thead>
@@ -1714,6 +1991,21 @@ function excluirSelecionadasReceitas() {
 function registrarEventosReceitas(container) {
   if (!container) return;
 
+  container.querySelectorAll('[data-sort-receitas]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sortReceitas;
+      if (ordenacaoReceitas.col === col) ordenacaoReceitas.dir = ordenacaoReceitas.dir === 'asc' ? 'desc' : 'asc';
+      else { ordenacaoReceitas.col = col; ordenacaoReceitas.dir = 'desc'; }
+      const secao = document.getElementById('secao-dashboard');
+      const cont = secao.querySelector('#container-receitas');
+      if (cont) {
+        const rec = aplicarFiltrosReceitas(receitasDoMes());
+        cont.innerHTML = renderizarTabelaReceitas(rec);
+        registrarEventosReceitas(cont);
+      }
+    });
+  });
+
   container.querySelectorAll('.chk-receita').forEach(chk =>
     chk.addEventListener('change', atualizarBotaoExclusaoReceitas));
   const chkTodos = container.querySelector('#chk-todos-receitas');
@@ -1726,6 +2018,10 @@ function registrarEventosReceitas(container) {
 
   container.querySelectorAll('.btn-editar-receita').forEach(btn => {
     btn.addEventListener('click', () => abrirModalReceita(btn.dataset.id));
+  });
+
+  container.querySelectorAll('.btn-duplicar-receita').forEach(btn => {
+    btn.addEventListener('click', () => duplicarReceita(btn.dataset.id));
   });
 
   container.querySelectorAll('.btn-excluir-receita').forEach(btn => {
@@ -1749,9 +2045,11 @@ function registrarEventosReceitas(container) {
   });
 }
 
-function abrirModalReceita(id = null) {
+function abrirModalReceita(id = null, catIdPreselect = null) {
   const receitas = carregarReceitas();
+  const categorias = categoriasReceitas();
   const receita = id ? receitas.find(r => r.id === id) : null;
+  const catSelecionada = catIdPreselect || (receita ? receita.categoriaId : null);
   const diaHoje = new Date().getDate();
   const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
   const dia = Math.min(diaHoje, diasNoMes);
@@ -1782,10 +2080,17 @@ function abrirModalReceita(id = null) {
         <input type="text" id="rec-descricao" placeholder="Ex: Salário, Freelance..."
           value="${receita ? receita.descricao : ''}" required maxlength="120" />
       </div>
+      <div class="form-grupo">
+        <label>Categoria <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(opcional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${htmlSelectCategoria('rec-categoria', categorias, catSelecionada, 'Sem categoria')}
+          <button type="button" id="btn-nova-cat-receita" class="btn btn-secundario" style="padding:9px 14px;white-space:nowrap">+ Nova</button>
+        </div>
+      </div>
       <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px">
         <input type="checkbox" id="rec-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${receita && receita.recorrente ? 'checked' : ''} />
         <label for="rec-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-          Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mês)</span>
+          Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
         </label>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
@@ -1795,6 +2100,16 @@ function abrirModalReceita(id = null) {
     </form>
   `;
   overlay.classList.add('visivel');
+  inicializarSelectCategoria('rec-categoria');
+
+  document.getElementById('btn-nova-cat-receita').addEventListener('click', () => {
+    const catAtual = document.getElementById('rec-categoria').value || null;
+    abrirModalNovaCategoria(
+      novaId => abrirModalReceita(id, novaId),
+      () => abrirModalReceita(id, catAtual),
+      'receitas'
+    );
+  });
 
   document.getElementById('btn-cancelar-receita').addEventListener('click', () => {
     overlay.classList.remove('visivel');
@@ -1806,6 +2121,7 @@ function abrirModalReceita(id = null) {
     const data = document.getElementById('rec-data').value;
     const descricao = document.getElementById('rec-descricao').value.trim();
     const recorrente = document.getElementById('rec-recorrente').checked;
+    const categoriaId = document.getElementById('rec-categoria').value || null;
 
     if (!valor || valor <= 0) { mostrarToast('Valor inválido.', 'erro'); return; }
     if (!data) { mostrarToast('Data inválida.', 'erro'); return; }
@@ -1814,13 +2130,100 @@ function abrirModalReceita(id = null) {
     const todas = carregarReceitas();
     if (receita) {
       const idx = todas.findIndex(r => r.id === id);
-      todas[idx] = { ...todas[idx], valor, data, descricao, recorrente };
+      todas[idx] = { ...todas[idx], valor, data, descricao, recorrente, categoriaId };
     } else {
-      todas.push({ id: gerarId(), valor, data, descricao, recorrente });
+      todas.push({ id: gerarId(), valor, data, descricao, recorrente, categoriaId });
     }
     salvarReceitas(todas);
     overlay.classList.remove('visivel');
     mostrarToast(receita ? 'Receita atualizada.' : 'Receita adicionada.', 'sucesso');
+    renderizarDashboard();
+  });
+}
+
+function duplicarReceita(id, catIdPreselect = null) {
+  const receita = carregarReceitas().find(r => r.id === id);
+  if (!receita) return;
+
+  const overlay = document.getElementById('overlay-modal');
+  const modal = document.getElementById('modal');
+  const categorias = categoriasReceitas();
+  const catSelecionada = catIdPreselect || receita.categoriaId || null;
+  const diaHoje = new Date().getDate();
+  const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
+  const dia = Math.min(diaHoje, diasNoMes);
+  const hoje = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+  modal.innerHTML = `
+    <h2>Duplicar Receita</h2>
+    <form id="form-receita" style="margin-top:16px">
+      <div class="form-linha">
+        <div class="form-grupo">
+          <label for="rec-valor">Valor</label>
+          <div class="input-prefixo">
+            <span>R$</span>
+            <input type="number" id="rec-valor" step="0.01" min="0.01" placeholder="0,00"
+              value="${receita.valor}" required />
+          </div>
+        </div>
+        <div class="form-grupo">
+          <label for="rec-data">Data</label>
+          <input type="date" id="rec-data" value="${hoje}" required />
+        </div>
+      </div>
+      <div class="form-grupo">
+        <label for="rec-descricao">Descrição</label>
+        <input type="text" id="rec-descricao" placeholder="Ex: Salário, Freelance..."
+          value="${receita.descricao}" required maxlength="120" />
+      </div>
+      <div class="form-grupo">
+        <label>Categoria <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(opcional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${htmlSelectCategoria('rec-categoria', categorias, catSelecionada, 'Sem categoria')}
+          <button type="button" id="btn-nova-cat-receita" class="btn btn-secundario" style="padding:9px 14px;white-space:nowrap">+ Nova</button>
+        </div>
+      </div>
+      <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px">
+        <input type="checkbox" id="rec-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${receita.recorrente ? 'checked' : ''} />
+        <label for="rec-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
+          Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button type="button" id="btn-cancelar-receita" class="btn btn-secundario">Cancelar</button>
+        <button type="submit" class="btn btn-sucesso">Duplicar</button>
+      </div>
+    </form>
+  `;
+  overlay.classList.add('visivel');
+  inicializarSelectCategoria('rec-categoria');
+
+  document.getElementById('btn-nova-cat-receita').addEventListener('click', () => {
+    const catAtual = document.getElementById('rec-categoria').value || null;
+    abrirModalNovaCategoria(
+      novaId => duplicarReceita(id, novaId),
+      () => duplicarReceita(id, catAtual),
+      'receitas'
+    );
+  });
+
+  document.getElementById('btn-cancelar-receita').addEventListener('click', () => overlay.classList.remove('visivel'));
+
+  document.getElementById('form-receita').addEventListener('submit', e => {
+    e.preventDefault();
+    const valor = parseFloat(document.getElementById('rec-valor').value);
+    const data = document.getElementById('rec-data').value;
+    const descricao = document.getElementById('rec-descricao').value.trim();
+    const recorrente = document.getElementById('rec-recorrente').checked;
+    const categoriaId = document.getElementById('rec-categoria').value || null;
+    if (!valor || valor <= 0) { mostrarToast('Valor inválido.', 'erro'); return; }
+    if (!data) { mostrarToast('Data inválida.', 'erro'); return; }
+    if (!descricao) { mostrarToast('Descrição obrigatória.', 'erro'); return; }
+    const todas = carregarReceitas();
+    todas.push({ id: gerarId(), valor, data, descricao, recorrente, categoriaId });
+    salvarReceitas(todas);
+    overlay.classList.remove('visivel');
+    mostrarToast('Receita duplicada.', 'sucesso');
     renderizarDashboard();
   });
 }
@@ -1913,20 +2316,31 @@ function apagarTodosOsGastos() {
   const totalReceitas = carregarReceitas().length;
 
   modal.innerHTML = `
-    <h2 style="color:var(--cor-perigo)">⚠️ Apagar todos os dados</h2>
-    <p style="margin:14px 0;line-height:1.6">
-      Esta ação vai apagar permanentemente <strong>${totalGastos} gasto(s)</strong> e <strong>${totalReceitas} receita(s)</strong>.<br>
-      As categorias <strong>não</strong> serão apagadas.
-    </p>
-    <p style="margin-bottom:6px;font-size:0.9rem;color:var(--cor-texto-suave)">
-      Digite <strong style="color:var(--cor-texto)">EXCLUIR</strong> para confirmar:
-    </p>
-    <input id="input-confirmar-exclusao" type="text" placeholder="EXCLUIR"
-      style="width:100%;padding:9px 12px;background:var(--cor-fundo);border:1px solid var(--cor-borda);
-             border-radius:8px;color:var(--cor-texto);font-size:1rem;margin-bottom:16px" />
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:56px;height:56px;border-radius:50%;background:rgba(240,79,90,0.12);border:1.5px solid rgba(240,79,90,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--cor-perigo)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </div>
+      <h2 style="color:var(--cor-perigo);font-size:18px;margin-bottom:6px">Apagar todos os dados</h2>
+      <p style="color:var(--cor-texto-suave);font-size:13px;line-height:1.5">Esta ação é <strong style="color:var(--cor-texto)">permanente</strong> e não pode ser desfeita.</p>
+    </div>
+    <div style="background:rgba(240,79,90,0.07);border:1px solid rgba(240,79,90,0.2);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:1.7">
+      Serão apagados permanentemente:<br>
+      <strong>${totalGastos} gasto${totalGastos !== 1 ? 's' : ''}</strong> e <strong>${totalReceitas} receita${totalReceitas !== 1 ? 's' : ''}</strong>.<br>
+      <span style="color:var(--cor-texto-suave)">As categorias serão preservadas.</span>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:12px;color:var(--cor-texto-suave);margin-bottom:8px;font-weight:500">Digite <strong style="color:var(--cor-perigo);letter-spacing:0.05em">EXCLUIR</strong> para habilitar o botão:</label>
+      <input id="input-confirmar-exclusao" type="text" placeholder="EXCLUIR"
+        style="width:100%;padding:10px 14px;background:var(--cor-fundo);border:1.5px solid var(--cor-borda);
+               border-radius:8px;color:var(--cor-texto);font-size:14px;box-sizing:border-box;
+               transition:border-color 0.15s;outline:none" />
+    </div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button id="btn-cancelar-apagar" class="btn btn-secundario">Cancelar</button>
-      <button id="btn-confirmar-apagar" class="btn btn-perigo" disabled>Apagar tudo</button>
+      <button id="btn-confirmar-apagar" class="btn btn-perigo" disabled style="display:flex;align-items:center;gap:8px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Apagar tudo
+      </button>
     </div>
   `;
   overlay.classList.add('visivel');
@@ -1935,7 +2349,11 @@ function apagarTodosOsGastos() {
   const btnConfirmar = document.getElementById('btn-confirmar-apagar');
 
   inputConfirmar.addEventListener('input', () => {
-    btnConfirmar.disabled = inputConfirmar.value.trim() !== 'EXCLUIR';
+    const correto = inputConfirmar.value.trim() === 'EXCLUIR';
+    btnConfirmar.disabled = !correto;
+    inputConfirmar.style.borderColor = inputConfirmar.value.length === 0
+      ? 'var(--cor-borda)'
+      : correto ? 'var(--cor-sucesso)' : 'rgba(240,79,90,0.5)';
   });
 
   document.getElementById('btn-cancelar-apagar').addEventListener('click', () => {
@@ -2054,16 +2472,8 @@ function mostrarRevisao() {
   atualizarStepperCSV(3);
   document.getElementById('secao-revisao').classList.add('visivel');
 
-  // Para receitas: esconde seção de categoria em lote e coluna Categoria
-  if (esReceita) {
-    const acoesRevisao = document.querySelector('.acoes-revisao');
-    if (acoesRevisao) acoesRevisao.style.display = 'none';
-    const thCategoria = document.querySelector('#tabela-revisao thead tr th:last-child');
-    if (thCategoria) thCategoria.style.display = 'none';
-  }
-
   const corpo = document.getElementById('corpo-revisao');
-  const categoriasCSV = carregarCategorias();
+  const categoriasCSV = esReceita ? categoriasReceitas() : categoriasGastos();
   corpo.innerHTML = linhasValidas.map(item => {
     const catSugerida = esReceita ? null : buscarCategoriaSugerida(item.descricao);
     const idInput = `inp-cat-csv-${item.idx}`;
@@ -2073,36 +2483,30 @@ function mostrarRevisao() {
       <td>${formatarData(item.data)}</td>
       <td>${item.descricao}${catSugerida ? ' <span style="font-size:11px;color:var(--cor-ativo)" title="Categoria sugerida pelo histórico">✦</span>' : ''}</td>
       <td>${formatarMoeda(item.valor)}</td>
-      ${esReceita ? '' : `<td style="min-width:160px">${htmlSelectCategoria(idInput, categoriasCSV, catSugerida, 'Selecione...')}</td>`}
+      <td style="min-width:160px">${htmlSelectCategoria(idInput, categoriasCSV, catSugerida, 'Selecione...')}</td>
     </tr>`;
   }).join('');
 
-  if (!esReceita) {
-    linhasValidas.forEach(item => {
-      inicializarSelectCategoria(`inp-cat-csv-${item.idx}`);
-    });
-  }
+  linhasValidas.forEach(item => inicializarSelectCategoria(`inp-cat-csv-${item.idx}`));
 
-  if (!esReceita) {
-    document.getElementById('btn-aplicar-lote').addEventListener('click', () => {
-      const catId = document.getElementById('inp-cat-lote').value;
-      if (!catId) { mostrarToast('Selecione uma categoria.', 'erro'); return; }
-      let aplicados = 0;
-      document.querySelectorAll('#corpo-revisao tr').forEach(tr => {
-        if (tr.querySelector('.chk-item')?.checked) {
-          const idx = tr.dataset.idx;
-          selecionarCategoriaDropdown(`inp-cat-csv-${idx}`, catId);
-          aplicados++;
-        }
-      });
-      if (!aplicados) mostrarToast('Nenhuma linha selecionada.', 'erro');
-      else mostrarToast(`Categoria aplicada a ${aplicados} item(ns).`, 'sucesso');
+  document.getElementById('btn-aplicar-lote').addEventListener('click', () => {
+    const catId = document.getElementById('inp-cat-lote').value;
+    if (!catId) { mostrarToast('Selecione uma categoria.', 'erro'); return; }
+    let aplicados = 0;
+    document.querySelectorAll('#corpo-revisao tr').forEach(tr => {
+      if (tr.querySelector('.chk-item')?.checked) {
+        const idx = tr.dataset.idx;
+        selecionarCategoriaDropdown(`inp-cat-csv-${idx}`, catId);
+        aplicados++;
+      }
     });
+    if (!aplicados) mostrarToast('Nenhuma linha selecionada.', 'erro');
+    else mostrarToast(`Categoria aplicada a ${aplicados} item(ns).`, 'sucesso');
+  });
 
-    document.getElementById('btn-nova-cat-csv').addEventListener('click', () => {
-      abrirModalCategoriaCSV();
-    });
-  }
+  document.getElementById('btn-nova-cat-csv').addEventListener('click', () => {
+    abrirModalCategoriaCSV();
+  });
 
   // Total selecionado
   const pTotal = document.createElement('p');
@@ -2168,7 +2572,8 @@ function confirmarImportacaoReceitas(linhasValidas) {
   linhasValidas.forEach(item => {
     const tr = document.querySelector(`[data-idx="${item.idx}"]`);
     if (!tr || !tr.querySelector('.chk-item').checked) return;
-    linhasSelecionadas.push(item);
+    const categoriaId = document.getElementById(`inp-cat-csv-${item.idx}`)?.value || null;
+    linhasSelecionadas.push({ ...item, categoriaId });
   });
 
   if (!linhasSelecionadas.length) {
@@ -2178,7 +2583,7 @@ function confirmarImportacaoReceitas(linhasValidas) {
 
   const receitas = carregarReceitas();
   linhasSelecionadas.forEach(item => {
-    receitas.push({ id: gerarId(), data: item.data, descricao: item.descricao, valor: item.valor, recorrente: false });
+    receitas.push({ id: gerarId(), data: item.data, descricao: item.descricao, valor: item.valor, recorrente: false, categoriaId: item.categoriaId });
   });
   salvarReceitas(receitas);
   mostrarToast(`${linhasSelecionadas.length} receitas importadas!`, 'sucesso');
@@ -2212,6 +2617,7 @@ function mostrarImportacaoPlanilhaReceitas() {
 
   const anoSugerido = new Date().getFullYear();
   const nomesExibicao = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const catsRec = categoriasReceitas();
 
   atualizarStepperCSV(3);
   const secaoMap = document.getElementById('secao-mapeamento');
@@ -2234,6 +2640,12 @@ function mostrarImportacaoPlanilhaReceitas() {
           <button class="btn btn-secundario" id="btn-aplicar-descricao-lote" style="padding:6px 14px">Aplicar</button>
         </div>
       </div>
+      <div class="select-lote" style="margin-top:18px">
+        <span>Categoria em lote:</span>
+        <div id="slot-lote-cat-rec" style="min-width:180px"></div>
+        <button class="btn btn-secundario" id="btn-lote-planilha-rec" style="padding:6px 14px">Aplicar aos selecionados</button>
+        <button class="btn btn-secundario" id="btn-nova-cat-planilha-rec" style="padding:6px 14px">+ Nova categoria</button>
+      </div>
     </div>
     <div style="overflow-x:auto">
       <table class="tabela-gastos">
@@ -2243,6 +2655,7 @@ function mostrarImportacaoPlanilhaReceitas() {
             <th>Mês / Dia</th>
             <th>Valor</th>
             <th>Descrição</th>
+            <th>Categoria</th>
           </tr>
         </thead>
         <tbody>
@@ -2253,6 +2666,7 @@ function mostrarImportacaoPlanilhaReceitas() {
               <td><strong>${formatarMoeda(e.valor)}</strong></td>
               <td><input type="text" class="inp-desc-rec" data-idx="${i}" value="${nomesExibicao[e.mes]}"
                 style="padding:6px 10px;border:1px solid var(--cor-borda);border-radius:6px;font-size:13px;width:160px;background:var(--cor-fundo);color:var(--cor-texto)" /></td>
+              <td style="min-width:160px">${htmlSelectCategoria(`inp-cat-plan-rec-${i}`, catsRec, null, 'Selecione...')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -2264,6 +2678,31 @@ function mostrarImportacaoPlanilhaReceitas() {
     </div>
   `;
 
+  // Inicializa dropdowns de categoria
+  const slotLoteRec = document.getElementById('slot-lote-cat-rec');
+  slotLoteRec.innerHTML = htmlSelectCategoria('inp-cat-lote-plan-rec', catsRec, null, '— selecione —');
+  inicializarSelectCategoria('inp-cat-lote-plan-rec');
+  entradas.forEach((e, i) => inicializarSelectCategoria(`inp-cat-plan-rec-${i}`));
+
+  // Categoria em lote
+  document.getElementById('btn-lote-planilha-rec').addEventListener('click', () => {
+    const catId = document.getElementById('inp-cat-lote-plan-rec').value;
+    if (!catId) { mostrarToast('Selecione uma categoria.', 'erro'); return; }
+    let aplicados = 0;
+    secaoMap.querySelectorAll('.chk-plan-rec').forEach(chk => {
+      if (chk.checked) {
+        selecionarCategoriaDropdown(`inp-cat-plan-rec-${chk.dataset.idx}`, catId);
+        aplicados++;
+      }
+    });
+    if (!aplicados) mostrarToast('Nenhuma linha selecionada.', 'erro');
+    else mostrarToast(`Categoria aplicada a ${aplicados} item(ns).`, 'sucesso');
+  });
+
+  document.getElementById('btn-nova-cat-planilha-rec').addEventListener('click', () => {
+    abrirModalCategoriaCSV();
+  });
+
   // Total selecionado
   const pTotalRec = document.createElement('p');
   pTotalRec.id = 'total-selecao-plan-rec';
@@ -2272,7 +2711,7 @@ function mostrarImportacaoPlanilhaReceitas() {
   atualizarTotalSelecao('total-selecao-plan-rec', '.chk-plan-rec');
 
   document.getElementById('chk-todos-plan-rec').addEventListener('change', function () {
-    document.querySelectorAll('.chk-plan-rec').forEach(c => { c.checked = this.checked; });
+    secaoMap.querySelectorAll('.chk-plan-rec').forEach(c => { c.checked = this.checked; });
     atualizarTotalSelecao('total-selecao-plan-rec', '.chk-plan-rec');
   });
   secaoMap.querySelector('tbody').addEventListener('change', e => {
@@ -2282,7 +2721,7 @@ function mostrarImportacaoPlanilhaReceitas() {
   document.getElementById('btn-aplicar-descricao-lote').addEventListener('click', () => {
     const desc = document.getElementById('inp-descricao-lote-rec').value.trim();
     if (!desc) return;
-    document.querySelectorAll('.chk-plan-rec').forEach(chk => {
+    secaoMap.querySelectorAll('.chk-plan-rec').forEach(chk => {
       if (chk.checked) {
         const inp = secaoMap.querySelector(`.inp-desc-rec[data-idx="${chk.dataset.idx}"]`);
         if (inp) inp.value = desc;
@@ -2309,10 +2748,11 @@ function confirmarImportacaoPlanilhaReceitas(entradas) {
     const idx = parseInt(chk.dataset.idx);
     const e = entradas[idx];
     const descricao = document.querySelector(`.inp-desc-rec[data-idx="${idx}"]`)?.value.trim() || nomesExibicao[e.mes];
+    const categoriaId = document.getElementById(`inp-cat-plan-rec-${idx}`)?.value || null;
     const diasNoMes = new Date(ano, e.mes + 1, 0).getDate();
     const dia = Math.min(e.dia, diasNoMes);
     const dataStr = `${ano}-${String(e.mes + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-    novasReceitas.push({ id: gerarId(), data: dataStr, descricao, valor: e.valor, recorrente: false });
+    novasReceitas.push({ id: gerarId(), data: dataStr, descricao, valor: e.valor, recorrente: false, categoriaId });
   });
 
   if (!novasReceitas.length) {
@@ -2395,15 +2835,17 @@ function mostrarImportacaoPlanilha() {
           </tr>
         </thead>
         <tbody>
-          ${entradas.map((e, i) => `
+          ${entradas.map((e, i) => {
+              const catSugerida = buscarCategoriaSugerida(e.tipo);
+              return `
               <tr data-idx="${i}">
                 <td><input type="checkbox" class="chk-plan" data-idx="${i}" data-valor="${e.valor}" checked /></td>
-                <td>${e.tipo}</td>
+                <td>${e.tipo}${catSugerida ? ' <span style="font-size:11px;color:var(--cor-ativo)" title="Categoria sugerida pelo histórico">✦</span>' : ''}</td>
                 <td>${nomesExibicao[e.mes]} / dia ${e.dia}</td>
                 <td><strong>${formatarMoeda(e.valor)}</strong></td>
-                <td style="min-width:160px">${htmlSelectCategoria(`inp-cat-plan-${i}`, categoriasCSV, null, 'Selecione...')}</td>
-              </tr>
-            `).join('')}
+                <td style="min-width:160px">${htmlSelectCategoria(`inp-cat-plan-${i}`, categoriasCSV, catSugerida, 'Selecione...')}</td>
+              </tr>`;
+            }).join('')}
         </tbody>
       </table>
     </div>
@@ -2497,26 +2939,46 @@ function confirmarImportacaoPlanilha(entradas) {
 
 function renderizarCategorias() {
   const secao = document.getElementById('secao-categorias');
-  const categorias = carregarCategorias();
+  const gastos = categoriasGastos();
+  const receitas = categoriasReceitas();
+
+  function listaHTML(cats) {
+    if (!cats.length) return '<p style="color:var(--cor-texto-suave);font-size:13px;padding:4px 0">Nenhuma categoria ainda.</p>';
+    return cats.map(c => `
+      <div class="item-categoria" data-id="${c.id}">
+        <span class="amostra-cor" style="background:${c.cor}"></span>
+        <span class="nome-categoria">${c.nome}</span>
+        <div class="acoes-categoria">
+          <button class="btn-acao" data-editar-cat="${c.id}">Editar</button>
+          <button class="btn-acao excluir" data-excluir-cat="${c.id}">Excluir</button>
+        </div>
+      </div>
+    `).join('');
+  }
 
   secao.innerHTML = `
     <h1 class="titulo-secao">Categorias</h1>
-    <div id="lista-categorias">
-      ${categorias.map(c => `
-        <div class="item-categoria" data-id="${c.id}">
-          <span class="amostra-cor" style="background:${c.cor}"></span>
-          <span class="nome-categoria">${c.nome}</span>
-          <div class="acoes-categoria">
-            <button class="btn-acao" data-editar-cat="${c.id}">Editar</button>
-            <button class="btn-acao excluir" data-excluir-cat="${c.id}">Excluir</button>
-          </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0;font-size:15px;font-weight:700">Gastos</h3>
+          <button class="btn btn-primario btn-nova-cat" data-tipo="gastos" style="padding:6px 14px;font-size:13px">+ Nova</button>
         </div>
-      `).join('')}
+        <div class="lista-categorias-grupo" id="lista-cat-gastos">${listaHTML(gastos)}</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0;font-size:15px;font-weight:700">Receitas</h3>
+          <button class="btn btn-primario btn-nova-cat" data-tipo="receitas" style="padding:6px 14px;font-size:13px">+ Nova</button>
+        </div>
+        <div class="lista-categorias-grupo" id="lista-cat-receitas">${listaHTML(receitas)}</div>
+      </div>
     </div>
-    <button class="btn btn-primario" id="btn-nova-categoria">+ Nova categoria</button>
   `;
 
-  document.getElementById('btn-nova-categoria').addEventListener('click', () => abrirModalCategoria());
+  secao.querySelectorAll('.btn-nova-cat').forEach(btn => {
+    btn.addEventListener('click', () => abrirModalCategoria(null, btn.dataset.tipo));
+  });
 
   secao.querySelectorAll('[data-editar-cat]').forEach(btn => {
     btn.addEventListener('click', () => abrirModalCategoria(btn.dataset.editarCat));
@@ -2527,24 +2989,25 @@ function renderizarCategorias() {
   });
 }
 
-function abrirModalCategoria(id = null) {
+function abrirModalCategoria(id = null, tipoFixo = null) {
   const categorias = carregarCategorias();
   const cat = id ? categorias.find(c => c.id === id) : null;
+  const tipoAtual = cat ? cat.tipo : (tipoFixo || 'gastos');
 
   const modal = document.getElementById('modal');
   const overlay = document.getElementById('overlay-modal');
 
   modal.innerHTML = `
     <button id="btn-fechar-modal">✕</button>
-    <h2>${cat ? 'Editar categoria' : 'Nova categoria'}</h2>
+    <h2>${cat ? 'Editar categoria' : `Nova categoria de ${tipoAtual === 'gastos' ? 'Gastos' : 'Receitas'}`}</h2>
     <form id="form-categoria">
       <div class="form-grupo">
         <label for="inp-nome-cat">Nome</label>
         <input type="text" id="inp-nome-cat" value="${cat ? cat.nome : ''}" required maxlength="40" placeholder="Ex: Academia" />
       </div>
       <div class="form-grupo">
-        <label for="inp-cor-cat">Cor</label>
-        <input type="color" id="inp-cor-cat" value="${cat ? cat.cor : '#7c6af7'}" style="height:40px;padding:2px 6px" />
+        <label>Cor</label>
+        ${htmlSeletorCor(cat ? cat.cor : '#6c63ff')}
       </div>
       <div class="acoes-form">
         <button type="submit" class="btn btn-primario">${cat ? 'Salvar' : 'Criar'}</button>
@@ -2554,6 +3017,7 @@ function abrirModalCategoria(id = null) {
   `;
 
   overlay.classList.add('visivel');
+  inicializarSeletorCor();
 
   document.getElementById('btn-fechar-modal').addEventListener('click', fecharModal);
   document.getElementById('btn-cancelar-modal').addEventListener('click', fecharModal);
@@ -2564,18 +3028,18 @@ function abrirModalCategoria(id = null) {
     const nome = document.getElementById('inp-nome-cat').value.trim();
     const cor = document.getElementById('inp-cor-cat').value;
     if (!nome) { mostrarToast('Nome obrigatório.', 'erro'); return; }
-    salvarCategoria(id, nome, cor);
+    salvarCategoria(id, nome, cor, tipoAtual);
   });
 }
 
-function salvarCategoria(id, nome, cor) {
+function salvarCategoria(id, nome, cor, tipo = 'gastos') {
   const categorias = carregarCategorias();
   if (id) {
     const idx = categorias.findIndex(c => c.id === id);
-    if (idx !== -1) categorias[idx] = { id, nome, cor };
+    if (idx !== -1) categorias[idx] = { ...categorias[idx], nome, cor };
     mostrarToast('Categoria atualizada!', 'sucesso');
   } else {
-    categorias.push({ id: gerarId(), nome, cor });
+    categorias.push({ id: gerarId(), nome, cor, tipo });
     mostrarToast('Categoria criada!', 'sucesso');
   }
   salvarCategorias(categorias);
@@ -2585,9 +3049,11 @@ function salvarCategoria(id, nome, cor) {
 
 function excluirCategoria(id) {
   const gastos = carregarGastos();
-  const emUso = gastos.some(g => g.categoriaId === id);
-  if (emUso) {
-    mostrarToast('Categoria em uso — remova os gastos primeiro.', 'erro');
+  const receitas = carregarReceitas();
+  const emUsoGastos = gastos.some(g => g.categoriaId === id);
+  const emUsoReceitas = receitas.some(r => r.categoriaId === id);
+  if (emUsoGastos || emUsoReceitas) {
+    mostrarToast(`Categoria em uso — remova os ${emUsoGastos ? 'gastos' : 'receitas'} primeiro.`, 'erro');
     return;
   }
   const cat = carregarCategorias().find(c => c.id === id);
@@ -2603,10 +3069,156 @@ function fecharModal() {
   document.getElementById('overlay-modal').classList.remove('visivel');
 }
 
+
+// ===== Exportar Relatório Anual =====
+
+function exportarRelatorioAnual(ano, gastoAno, receitaAno, totalPorMes, receitaPorMes, categorias, top5Gastos, nomesMeses) {
+  const mesesIdx = Array.from({length: 12}, (_, i) => i);
+  const totalGastos = gastoAno.reduce((s, g) => s + g.valor, 0);
+  const totalReceitas = receitaAno.reduce((s, r) => s + r.valor, 0);
+  const saldoAnual = totalReceitas - totalGastos;
+  const fmt = v => 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  // Gastos por categoria
+  const catMap = {};
+  categorias.forEach(c => catMap[c.id] = c);
+  const porCat = {};
+  gastoAno.forEach(g => {
+    const n = catMap[g.categoriaId]?.nome || 'Sem categoria';
+    porCat[n] = (porCat[n] || 0) + g.valor;
+  });
+  const catOrdenadas = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+
+  // Linhas da tabela mensal
+  let linhasMeses = '';
+  mesesIdx.forEach(i => {
+    const gastos = totalPorMes[i] || 0;
+    const receitas = receitaPorMes[i] || 0;
+    const saldo = receitas - gastos;
+    const corSaldo = saldo >= 0 ? '#4ade80' : '#f87171';
+    if (gastos === 0 && receitas === 0) return;
+    linhasMeses += `<tr>
+      <td>${nomesMeses[i]}</td>
+      <td>${fmt(gastos)}</td>
+      <td>${fmt(receitas)}</td>
+      <td style="color:${corSaldo};font-weight:600">${fmt(saldo)}</td>
+    </tr>`;
+  });
+
+  // Linhas top 5 gastos
+  let linhasTop5 = '';
+  top5Gastos.forEach((g, idx) => {
+    const cat = catMap[g.categoriaId];
+    const [ano2, mes, dia] = g.data.split('-');
+    linhasTop5 += `<tr>
+      <td style="color:#a0a0b8">${idx + 1}º</td>
+      <td>${g.descricao}</td>
+      <td>${dia}/${mes}/${ano2}</td>
+      <td style="color:${cat?.cor || '#888'}">${cat?.nome || 'Sem categoria'}</td>
+      <td style="font-weight:600">${fmt(g.valor)}</td>
+    </tr>`;
+  });
+
+  // Linhas categorias
+  let linhasCat = '';
+  catOrdenadas.slice(0, 10).forEach(([nome, val]) => {
+    const pct = totalGastos > 0 ? (val / totalGastos * 100).toFixed(1) : '0.0';
+    const cat = categorias.find(c => c.nome === nome);
+    linhasCat += `<tr>
+      <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cat?.cor || '#888'};margin-right:8px"></span>${nome}</td>
+      <td>${fmt(val)}</td>
+      <td>${pct}%</td>
+    </tr>`;
+  });
+
+  const corSaldoAnual = saldoAnual >= 0 ? '#4ade80' : '#f87171';
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório Anual ${ano}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #13111e; color: #e2e0f0; padding: 32px; }
+  h1 { font-size: 28px; color: #8b5cf6; margin-bottom: 4px; }
+  .sub { color: #6b6980; font-size: 14px; margin-bottom: 32px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .card { background: #1e1b2e; border-radius: 12px; padding: 20px; border: 1px solid #2a2640; }
+  .card .label { font-size: 12px; color: #6b6980; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .card .valor { font-size: 24px; font-weight: 700; }
+  h2 { font-size: 15px; font-weight: 600; color: #a09dc0; margin-bottom: 12px; border-bottom: 1px solid #2a2640; padding-bottom: 8px; }
+  .secao { background: #1e1b2e; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #2a2640; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: #6b6980; font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #2a2640; }
+  td { padding: 10px 12px; border-bottom: 1px solid #1a1828; color: #c8c5e0; }
+  tr:last-child td { border-bottom: none; }
+  .rodape { text-align: center; color: #4a4760; font-size: 12px; margin-top: 32px; }
+  @media print { body { background: #13111e; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<h1>Relatório Anual ${ano}</h1>
+<p class="sub">Gerado em ${new Date().toLocaleDateString('pt-BR')} pelo Minhas Finanças</p>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Total de Gastos</div>
+    <div class="valor" style="color:#f87171">${fmt(totalGastos)}</div>
+  </div>
+  <div class="card">
+    <div class="label">Total de Receitas</div>
+    <div class="valor" style="color:#4ade80">${fmt(totalReceitas)}</div>
+  </div>
+  <div class="card">
+    <div class="label">Saldo Anual</div>
+    <div class="valor" style="color:${corSaldoAnual}">${fmt(saldoAnual)}</div>
+  </div>
+</div>
+
+<div class="secao">
+  <h2>Extrato Mensal</h2>
+  <table>
+    <thead><tr><th>Mês</th><th>Gastos</th><th>Receitas</th><th>Saldo</th></tr></thead>
+    <tbody>${linhasMeses}</tbody>
+  </table>
+</div>
+
+<div class="secao">
+  <h2>Gastos por Categoria</h2>
+  <table>
+    <thead><tr><th>Categoria</th><th>Total</th><th>% do Total</th></tr></thead>
+    <tbody>${linhasCat}</tbody>
+  </table>
+</div>
+
+<div class="secao">
+  <h2>Maiores Gastos do Ano</h2>
+  <table>
+    <thead><tr><th>#</th><th>Descrição</th><th>Data</th><th>Categoria</th><th>Valor</th></tr></thead>
+    <tbody>${linhasTop5}</tbody>
+  </table>
+</div>
+
+<p class="rodape">Minhas Finanças — Relatório ${ano}</p>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `relatorio-${ano}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  mostrarToast('Relatório exportado com sucesso!', 'sucesso');
+}
+
 // ===== Resumo Anual =====
 
 let graficoBarras = null;
 let graficoPizzaAnual = null;
+let graficoPizzaAnualReceitas = null;
 let graficoComparativo = null;
 let graficoTendencia = null;
 
@@ -2651,12 +3263,22 @@ function renderizarResumoAnual() {
   const maiorMesIdx = totalPorMes.indexOf(Math.max(...totalPorMes));
   const menorMesIdx = totalPorMes.reduce((iMin, v, i) => v > 0 && (iMin === -1 || v < totalPorMes[iMin]) ? i : iMin, -1);
 
-  // Top categorias do ano
+  // Top categorias do ano (gastos)
   const porCategoria = {};
   gastoAno.forEach(g => {
     porCategoria[g.categoriaId] = (porCategoria[g.categoriaId] || 0) + g.valor;
   });
   const topCats = Object.entries(porCategoria)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, val]) => ({ cat: categorias.find(c => c.id === id), val }));
+
+  // Top categorias do ano (receitas)
+  const porCategoriaRec = {};
+  receitaAno.forEach(r => {
+    if (r.categoriaId) porCategoriaRec[r.categoriaId] = (porCategoriaRec[r.categoriaId] || 0) + r.valor;
+  });
+  const topCatsRec = Object.entries(porCategoriaRec)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([id, val]) => ({ cat: categorias.find(c => c.id === id), val }));
@@ -2668,6 +3290,10 @@ function renderizarResumoAnual() {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <h1 class="titulo-secao" style="margin:0">Resumo Anual</h1>
       <div style="display:flex;align-items:center;gap:10px">
+        <button id="btn-exportar-relatorio" class="btn btn-secundario" style="display:flex;align-items:center;gap:7px;font-size:13px;padding:8px 14px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Exportar Relatório
+        </button>
         <label style="font-size:13px;color:var(--cor-texto-suave)">Ano:</label>
         <select id="sel-ano-resumo" style="padding:8px 14px;border:1px solid var(--cor-borda);border-radius:8px;background:var(--cor-card);color:var(--cor-texto);font-size:14px;font-weight:600">
           ${anosComDados.map(a => `<option value="${a}" ${a === anoSelecionado ? 'selected' : ''}>${a}</option>`).join('')}
@@ -2758,6 +3384,29 @@ function renderizarResumoAnual() {
         ` : '<p class="sem-gastos">Sem dados</p>'}
       </div>
 
+      <!-- Top categorias receitas -->
+      <div class="card">
+        <h2 style="font-size:15px;font-weight:600;margin-bottom:16px">Top categorias — Receitas</h2>
+        ${topCatsRec.length ? `
+          <canvas id="canvas-pizza-anual-rec" style="max-width:200px;max-height:200px;margin:0 auto 16px;display:block"></canvas>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${topCatsRec.map(({ cat, val }) => {
+              const nome = cat ? cat.nome : 'Sem categoria';
+              const cor = cat ? cat.cor : '#aaa';
+              const pct = totalReceitaAnual > 0 ? ((val / totalReceitaAnual) * 100).toFixed(1) : 0;
+              return `
+                <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+                  <span class="cor-dot" style="background:${cor}"></span>
+                  <span style="flex:1">${nome}</span>
+                  <span style="color:var(--cor-texto-suave)">${pct}%</span>
+                  <span style="font-weight:600">${formatarMoeda(val)}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : '<p class="sem-gastos">Sem categorias de receitas</p>'}
+      </div>
+
       <!-- Top 5 maiores gastos -->
       <div class="card">
         <h2 style="font-size:15px;font-weight:600;margin-bottom:16px">Maiores gastos do ano</h2>
@@ -2807,7 +3456,7 @@ function renderizarResumoAnual() {
                 const pct = (gasto - prevGasto) / prevGasto * 100;
                 const cor = pct >= 0 ? 'var(--cor-perigo)' : 'var(--cor-sucesso)';
                 const seta = pct >= 0 ? '↑' : '↓';
-                variacaoHtml = `<span style="color:${cor};font-weight:600;font-size:12px">${seta} ${Math.abs(pct).toFixed(1)}%</span>`;
+                variacaoHtml = `<span class="badge-variacao ${pct >= 0 ? 'alta' : 'baixa'}">${seta} ${Math.abs(pct).toFixed(1)}%</span>`;
               }
               return `
                 <tr>
@@ -2815,7 +3464,7 @@ function renderizarResumoAnual() {
                   <td style="color:var(--cor-perigo);font-weight:600">${gasto > 0 ? formatarMoeda(gasto) : '—'}</td>
                   <td>${variacaoHtml}</td>
                   <td style="color:var(--cor-sucesso);font-weight:600">${receita > 0 ? formatarMoeda(receita) : '—'}</td>
-                  <td style="font-weight:700;color:${!temDados ? 'var(--cor-texto-suave)' : saldo >= 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)'}">
+                  <td style="font-weight:700;white-space:nowrap;color:${!temDados ? 'var(--cor-texto-suave)' : saldo >= 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)'}">
                     ${temDados ? formatarMoeda(saldo) : '—'}
                   </td>
                 </tr>
@@ -2831,6 +3480,10 @@ function renderizarResumoAnual() {
   document.getElementById('sel-ano-resumo').addEventListener('change', function () {
     window._anoResumo = this.value;
     renderizarResumoAnual();
+  });
+
+  document.getElementById('btn-exportar-relatorio').addEventListener('click', () => {
+    exportarRelatorioAnual(anoSelecionado, gastoAno, receitaAno, totalPorMes, receitaPorMes, categorias, top5Gastos, nomesMesesCompletos);
   });
 
   if (!gastoAno.length && !receitaAno.length) return;
@@ -2929,6 +3582,31 @@ function renderizarResumoAnual() {
     });
   }
 
+  // Gráfico de pizza — top categorias receitas
+  if (graficoPizzaAnualReceitas) { graficoPizzaAnualReceitas.destroy(); graficoPizzaAnualReceitas = null; }
+  const ctxPizzaRec = document.getElementById('canvas-pizza-anual-rec');
+  if (ctxPizzaRec && topCatsRec.length) {
+    graficoPizzaAnualReceitas = new Chart(ctxPizzaRec, {
+      type: 'doughnut',
+      data: {
+        labels: topCatsRec.map(({ cat }) => cat ? cat.nome : 'Sem categoria'),
+        datasets: [{
+          data: topCatsRec.map(({ val }) => val),
+          backgroundColor: topCatsRec.map(({ cat }) => cat ? cat.cor : '#aaa'),
+          borderWidth: 2,
+          borderColor: '#1a1a28',
+        }]
+      },
+      options: {
+        cutout: '60%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ' ' + formatarMoeda(ctx.parsed) } }
+        }
+      }
+    });
+  }
+
   // Gráfico de pizza — top categorias
   if (graficoPizzaAnual) { graficoPizzaAnual.destroy(); graficoPizzaAnual = null; }
   const ctxPizza = document.getElementById('canvas-pizza-anual');
@@ -3003,7 +3681,7 @@ function renderizarCompararMeses() {
     const bom = inverso ? !subiu : subiu;
     const cor = bom ? 'var(--cor-sucesso)' : 'var(--cor-perigo)';
     const seta = subiu ? '↑' : '↓';
-    return `<span style="font-size:12px;color:${cor};font-weight:600;margin-left:6px">${seta} ${Math.abs(pct).toFixed(1)}%</span>`;
+    return `<span class="badge-variacao ${bom ? 'baixa' : 'alta'}" style="margin-left:6px">${seta} ${Math.abs(pct).toFixed(1)}%</span>`;
   }
 
   // Categorias combinadas dos dois meses
@@ -3023,18 +3701,25 @@ function renderizarCompararMeses() {
   const top5A = [...gastosA].sort((a, b) => b.valor - a.valor).slice(0, 5);
   const top5B = [...gastosB].sort((a, b) => b.valor - a.valor).slice(0, 5);
 
+  // Top 5 receitas de cada mês
+  const top5RecA = [...receitasA].sort((a, b) => b.valor - a.valor).slice(0, 5);
+  const top5RecB = [...receitasB].sort((a, b) => b.valor - a.valor).slice(0, 5);
+
   const opsMeses = nomesMeses.map((n, i) => `<option value="${i}">${n}</option>`).join('');
   const opsAnos = anos.map(a => `<option value="${a}">${a}</option>`).join('');
 
-  function seletorMes(prefixo, mesSel, anoSel) {
+  function seletorMes(prefixo, mesSel, anoSel, rotulo) {
     return `
-      <div class="seletor-mes-comparar">
-        <select id="sel-mes-${prefixo}" class="sel-comparar">
-          ${nomesMeses.map((n, i) => `<option value="${i}" ${i === mesSel ? 'selected' : ''}>${n}</option>`).join('')}
-        </select>
-        <select id="sel-ano-${prefixo}" class="sel-comparar">
-          ${anos.map(a => `<option value="${a}" ${a === anoSel ? 'selected' : ''}>${a}</option>`).join('')}
-        </select>
+      <div class="seletor-mes-comparar-bloco">
+        <div class="seletor-mes-comparar-label">${rotulo}</div>
+        <div class="seletor-mes-comparar">
+          <select id="sel-mes-${prefixo}" class="sel-comparar">
+            ${nomesMeses.map((n, i) => `<option value="${i}" ${i === mesSel ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+          <select id="sel-ano-${prefixo}" class="sel-comparar" style="width:90px">
+            ${anos.map(a => `<option value="${a}" ${a === anoSel ? 'selected' : ''}>${a}</option>`).join('')}
+          </select>
+        </div>
       </div>
     `;
   }
@@ -3082,21 +3767,33 @@ function renderizarCompararMeses() {
     }).join('');
   }
 
+  function listaTop5Receitas(receitas) {
+    if (!receitas.length) return '<p style="color:var(--cor-texto-suave);font-size:13px;padding:8px 0">Sem receitas</p>';
+    return receitas.map((r, i) => {
+      const cat = categorias.find(c => c.id === r.categoriaId);
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--cor-borda)">
+          <span style="font-size:16px;font-weight:800;color:var(--cor-texto-suave);min-width:20px">${i + 1}</span>
+          ${cat ? `<span class="cor-dot" style="background:${cat.cor}"></span>` : ''}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.descricao}</div>
+            <div style="font-size:11px;color:var(--cor-texto-suave)">${formatarData(r.data)}</div>
+          </div>
+          <span style="font-weight:700;font-size:13px;color:var(--cor-sucesso)">${formatarMoeda(r.valor)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
   secao.innerHTML = `
     <h1 class="titulo-secao">Comparar Meses</h1>
 
     <!-- Seletores -->
-    <div class="card" style="margin-bottom:24px">
-      <div style="display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;padding:8px 0">
-        <div style="text-align:center">
-          <div style="font-size:11px;font-weight:700;color:var(--cor-texto-suave);letter-spacing:1px;margin-bottom:10px">MÊS A</div>
-          ${seletorMes('a', mesA, anoA)}
-        </div>
-        <div style="font-size:20px;font-weight:700;color:var(--cor-texto-suave);padding-top:20px">vs</div>
-        <div style="text-align:center">
-          <div style="font-size:11px;font-weight:700;color:var(--cor-texto-suave);letter-spacing:1px;margin-bottom:10px">MÊS B</div>
-          ${seletorMes('b', mesB, anoB)}
-        </div>
+    <div class="card comparar-seletores-card" style="margin-bottom:24px">
+      <div class="comparar-seletores-row">
+        ${seletorMes('a', mesA, anoA, 'Mês A')}
+        <div class="comparar-vs-badge">vs</div>
+        ${seletorMes('b', mesB, anoB, 'Mês B')}
       </div>
     </div>
 
@@ -3145,7 +3842,7 @@ function renderizarCompararMeses() {
     </div>
 
     <!-- Top gastos lado a lado -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card">
         <h2 style="font-size:15px;font-weight:600;margin-bottom:12px">Maiores gastos — ${nomesMeses[mesA]} ${anoA}</h2>
         ${listaTop5(top5A)}
@@ -3153,6 +3850,18 @@ function renderizarCompararMeses() {
       <div class="card">
         <h2 style="font-size:15px;font-weight:600;margin-bottom:12px">Maiores gastos — ${nomesMeses[mesB]} ${anoB}</h2>
         ${listaTop5(top5B)}
+      </div>
+    </div>
+
+    <!-- Top receitas lado a lado -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <h2 style="font-size:15px;font-weight:600;margin-bottom:12px">Maiores receitas — ${nomesMeses[mesA]} ${anoA}</h2>
+        ${listaTop5Receitas(top5RecA)}
+      </div>
+      <div class="card">
+        <h2 style="font-size:15px;font-weight:600;margin-bottom:12px">Maiores receitas — ${nomesMeses[mesB]} ${anoB}</h2>
+        ${listaTop5Receitas(top5RecB)}
       </div>
     </div>
   `;
@@ -3178,18 +3887,60 @@ function renderizarCompararMeses() {
 
 function renderizarBuscaGlobal() {
   const secao = document.getElementById('secao-busca');
+  const categorias = carregarCategorias();
+  const opsCats = categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
   secao.innerHTML = `
     <h1 class="titulo-secao">Busca Global</h1>
     <div class="card" style="margin-bottom:24px">
       <input type="text" id="inp-busca-global" placeholder="Buscar em todos os meses e anos..."
-        style="width:100%;padding:12px 16px;border:1px solid var(--cor-borda);border-radius:8px;background:var(--cor-fundo);color:var(--cor-texto);font-size:15px;outline:none" />
+        style="width:100%;padding:12px 16px;border:1px solid var(--cor-borda);border-radius:8px;background:var(--cor-fundo);color:var(--cor-texto);font-size:15px;outline:none;box-sizing:border-box" />
+      <div id="painel-filtros-busca">
+        <div>
+          <div class="busca-filtro-label">Tipo</div>
+          <select id="fb-tipo">
+            <option value="todos">Todos</option>
+            <option value="gastos">Gastos</option>
+            <option value="receitas">Receitas</option>
+          </select>
+        </div>
+        <div>
+          <div class="busca-filtro-label">Categoria</div>
+          <select id="fb-categoria">
+            <option value="">Todas</option>
+            ${opsCats}
+          </select>
+        </div>
+        <div>
+          <div class="busca-filtro-label">Valor mín</div>
+          <input type="number" id="fb-valor-min" placeholder="R$ 0" min="0" step="0.01" />
+        </div>
+        <div>
+          <div class="busca-filtro-label">Valor máx</div>
+          <input type="number" id="fb-valor-max" placeholder="R$ ∞" min="0" step="0.01" />
+        </div>
+        <button id="btn-limpar-busca">✕ Limpar filtros</button>
+      </div>
     </div>
     <div id="resultados-busca"></div>
   `;
+  lucide.createIcons();
 
   const inp = document.getElementById('inp-busca-global');
   inp.focus();
-  inp.addEventListener('input', () => executarBuscaGlobal(inp.value.trim()));
+  const disparar = () => executarBuscaGlobal(inp.value.trim());
+  inp.addEventListener('input', disparar);
+  document.getElementById('fb-tipo').addEventListener('change', e => { filtroBusca.tipo = e.target.value; disparar(); });
+  document.getElementById('fb-categoria').addEventListener('change', e => { filtroBusca.categoriaId = e.target.value; disparar(); });
+  document.getElementById('fb-valor-min').addEventListener('input', e => { filtroBusca.valorMin = e.target.value; disparar(); });
+  document.getElementById('fb-valor-max').addEventListener('input', e => { filtroBusca.valorMax = e.target.value; disparar(); });
+  document.getElementById('btn-limpar-busca').addEventListener('click', () => {
+    filtroBusca = { tipo: 'todos', categoriaId: '', valorMin: '', valorMax: '' };
+    document.getElementById('fb-tipo').value = 'todos';
+    document.getElementById('fb-categoria').value = '';
+    document.getElementById('fb-valor-min').value = '';
+    document.getElementById('fb-valor-max').value = '';
+    disparar();
+  });
 }
 
 function executarBuscaGlobal(termo) {
@@ -3197,21 +3948,45 @@ function executarBuscaGlobal(termo) {
   if (!termo) { container.innerHTML = ''; return; }
 
   const categorias = carregarCategorias();
-  const todos = carregarGastos().filter(g =>
-    g.descricao.toLowerCase().includes(termo.toLowerCase())
-  );
+  const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const highlight = str => str.replace(regex, '<mark style="background:var(--cor-ativo);color:#fff;border-radius:3px;padding:0 2px">$1</mark>');
 
-  if (!todos.length) {
+  const termoLow = termo.toLowerCase();
+  const { tipo, categoriaId, valorMin, valorMax } = filtroBusca;
+  const vMin = valorMin ? parseFloat(valorMin) : null;
+  const vMax = valorMax ? parseFloat(valorMax) : null;
+
+  const todosGastos = tipo === 'receitas' ? [] : carregarGastos().filter(g => {
+    if (!g.descricao.toLowerCase().includes(termoLow)) return false;
+    if (categoriaId && g.categoriaId !== categoriaId) return false;
+    if (vMin !== null && g.valor < vMin) return false;
+    if (vMax !== null && g.valor > vMax) return false;
+    return true;
+  });
+  const todasReceitas = tipo === 'gastos' ? [] : carregarReceitas().filter(r => {
+    if (!r.descricao.toLowerCase().includes(termoLow)) return false;
+    if (categoriaId && r.categoriaId !== categoriaId) return false;
+    if (vMin !== null && r.valor < vMin) return false;
+    if (vMax !== null && r.valor > vMax) return false;
+    return true;
+  });
+
+  if (!todosGastos.length && !todasReceitas.length) {
     container.innerHTML = `<p class="sem-gastos">Nenhum resultado para "<strong>${termo}</strong>"</p>`;
     return;
   }
 
   // Agrupa por ano-mês
   const porMes = {};
-  todos.forEach(g => {
+  todosGastos.forEach(g => {
     const chave = g.data.substring(0, 7);
-    if (!porMes[chave]) porMes[chave] = [];
-    porMes[chave].push(g);
+    if (!porMes[chave]) porMes[chave] = { gastos: [], receitas: [] };
+    porMes[chave].gastos.push(g);
+  });
+  todasReceitas.forEach(r => {
+    const chave = r.data.substring(0, 7);
+    if (!porMes[chave]) porMes[chave] = { gastos: [], receitas: [] };
+    porMes[chave].receitas.push(r);
   });
 
   const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -3219,23 +3994,26 @@ function executarBuscaGlobal(termo) {
   const html = Object.keys(porMes).sort().reverse().map(chave => {
     const [ano, mes] = chave.split('-');
     const nomeMesStr = nomesMeses[parseInt(mes) - 1];
-    const gastosMes = porMes[chave].sort((a, b) => b.data.localeCompare(a.data));
-    const totalMes = gastosMes.reduce((s, g) => s + g.valor, 0);
+    const gastosMes = (porMes[chave].gastos || []).sort((a, b) => b.data.localeCompare(a.data));
+    const receitasMes = (porMes[chave].receitas || []).sort((a, b) => b.data.localeCompare(a.data));
+    const totalGastosMes = gastosMes.reduce((s, g) => s + g.valor, 0);
+    const totalReceitasMes = receitasMes.reduce((s, r) => s + r.valor, 0);
+    const totalItens = gastosMes.length + receitasMes.length;
 
-    const linhas = gastosMes.map(g => {
+    const linhasGastos = gastosMes.map(g => {
       const cat = categorias.find(c => c.id === g.categoriaId);
       const corCat = cat ? cat.cor : '#aaa';
       const nomeCat = cat ? cat.nome : 'Sem categoria';
       const pendente = g.status === 'pendente';
-      // Destaca o termo buscado
-      const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-      const descHighlight = g.descricao.replace(regex, '<mark style="background:var(--cor-ativo);color:#fff;border-radius:3px;padding:0 2px">$1</mark>');
       return `
         <tr class="${pendente ? 'linha-pendente' : ''}">
           <td>${formatarData(g.data)}</td>
-          <td>${g.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${descHighlight}</td>
+          <td>
+            <span style="font-size:10px;background:rgba(240,79,90,0.15);color:var(--cor-perigo);border-radius:4px;padding:1px 6px;margin-right:4px;font-weight:600">Gasto</span>
+            ${g.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${highlight(g.descricao)}
+          </td>
           <td><span class="badge-categoria" style="background:${corCat}">${nomeCat}</span></td>
-          <td><strong>${formatarMoeda(g.valor)}</strong></td>
+          <td><strong style="color:var(--cor-perigo)">${formatarMoeda(g.valor)}</strong></td>
           <td><span class="badge-status ${pendente ? 'pendente' : 'pago'}" style="cursor:pointer" data-toggle-status-busca="${g.id}">${pendente ? 'Pendente' : 'Pago'}</span></td>
           <td>
             <div class="acoes-gasto">
@@ -3246,25 +4024,56 @@ function executarBuscaGlobal(termo) {
         </tr>`;
     }).join('');
 
+    const linhasReceitas = receitasMes.map(r => {
+      const cat = categorias.find(c => c.id === r.categoriaId);
+      const corCat = cat ? cat.cor : '#aaa';
+      const nomeCat = cat ? cat.nome : 'Sem categoria';
+      return `
+        <tr>
+          <td>${formatarData(r.data)}</td>
+          <td>
+            <span style="font-size:10px;background:rgba(46,204,113,0.15);color:var(--cor-sucesso);border-radius:4px;padding:1px 6px;margin-right:4px;font-weight:600">Receita</span>
+            ${r.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${highlight(r.descricao)}
+          </td>
+          <td>${r.categoriaId ? `<span class="badge-categoria" style="background:${corCat}">${nomeCat}</span>` : '<span style="color:var(--cor-texto-suave);font-size:12px">—</span>'}</td>
+          <td><strong style="color:var(--cor-sucesso)">${formatarMoeda(r.valor)}</strong></td>
+          <td><span style="color:var(--cor-texto-suave);font-size:12px">—</span></td>
+          <td>
+            <div class="acoes-gasto">
+              <button class="btn-acao" data-editar-receita-busca="${r.id}">Editar</button>
+              <button class="btn-acao" onclick="irParaMesDoGasto('${r.data}')">Ver mês</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    const resumo = [];
+    if (gastosMes.length) resumo.push(`${gastosMes.length} gasto(s): ${formatarMoeda(totalGastosMes)}`);
+    if (receitasMes.length) resumo.push(`${receitasMes.length} receita(s): ${formatarMoeda(totalReceitasMes)}`);
+
     return `
       <div style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <h3 style="font-size:14px;font-weight:700;color:var(--cor-texto-suave)">${nomeMesStr} ${ano}</h3>
-          <span style="font-size:13px;color:var(--cor-texto-suave)">${gastosMes.length} resultado(s) · ${formatarMoeda(totalMes)}</span>
+          <span style="font-size:13px;color:var(--cor-texto-suave)">${resumo.join(' · ')}</span>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <table class="tabela-gastos">
             <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead>
-            <tbody>${linhas}</tbody>
+            <tbody>${linhasGastos}${linhasReceitas}</tbody>
           </table>
         </div>
       </div>`;
   }).join('');
 
-  const total = todos.reduce((s, g) => s + g.valor, 0);
+  const totalG = todosGastos.reduce((s, g) => s + g.valor, 0);
+  const totalR = todasReceitas.reduce((s, r) => s + r.valor, 0);
+  const totalItensGlobal = todosGastos.length + todasReceitas.length;
   container.innerHTML = `
     <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:16px">
-      ${todos.length} resultado(s) em ${Object.keys(porMes).length} mês(es) · Total: <strong>${formatarMoeda(total)}</strong>
+      ${totalItensGlobal} resultado(s) em ${Object.keys(porMes).length} mês(es)
+      ${todosGastos.length ? ` · Gastos: <strong>${formatarMoeda(totalG)}</strong>` : ''}
+      ${todasReceitas.length ? ` · Receitas: <strong style="color:var(--cor-sucesso)">${formatarMoeda(totalR)}</strong>` : ''}
     </p>
     ${html}`;
 
@@ -3284,6 +4093,12 @@ function executarBuscaGlobal(termo) {
       const gasto = carregarGastos().find(g => g.id === btn.dataset.editarBusca);
       if (!gasto) return;
       abrirModalGasto(gasto, false, () => executarBuscaGlobal(termo));
+    });
+  });
+
+  container.querySelectorAll('[data-editar-receita-busca]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      abrirModalReceita(btn.dataset.editarReceitaBusca);
     });
   });
 }
@@ -3309,6 +4124,23 @@ function inicializar() {
     item.addEventListener('click', () => irParaSecao(item.dataset.secao));
   });
 
+  // Tema claro/escuro
+  const btnTema = document.getElementById('btn-tema');
+  if (btnTema) {
+    if (localStorage.getItem('tema') === 'claro') {
+      document.body.classList.add('tema-claro');
+      document.getElementById('label-tema').textContent = 'Tema escuro';
+      document.getElementById('icone-tema').setAttribute('data-lucide', 'moon');
+    }
+    btnTema.addEventListener('click', () => {
+      const claro = document.body.classList.toggle('tema-claro');
+      localStorage.setItem('tema', claro ? 'claro' : 'escuro');
+      document.getElementById('label-tema').textContent = claro ? 'Tema escuro' : 'Tema claro';
+      document.getElementById('icone-tema').setAttribute('data-lucide', claro ? 'moon' : 'sun');
+      lucide.createIcons();
+    });
+  }
+
   // Backup / Restaurar
   document.getElementById('btn-fazer-backup').addEventListener('click', fazerBackup);
   document.getElementById('btn-restaurar-backup').addEventListener('click', () => {
@@ -3322,6 +4154,30 @@ function inicializar() {
       restaurarBackup(arquivo);
       e.target.value = '';
     }
+  });
+
+  // FAB flutuante
+  const fabBtn = document.getElementById('fab-btn');
+  const fabMenu = document.getElementById('fab-menu');
+  fabBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const aberto = fabMenu.classList.contains('visivel');
+    fabMenu.classList.toggle('visivel', !aberto);
+    fabBtn.classList.toggle('aberto', !aberto);
+  });
+  document.getElementById('fab-gasto').addEventListener('click', () => {
+    fabMenu.classList.remove('visivel');
+    fabBtn.classList.remove('aberto');
+    abrirModalAdicionarGasto();
+  });
+  document.getElementById('fab-receita').addEventListener('click', () => {
+    fabMenu.classList.remove('visivel');
+    fabBtn.classList.remove('aberto');
+    abrirModalReceita();
+  });
+  document.addEventListener('click', () => {
+    fabMenu.classList.remove('visivel');
+    fabBtn.classList.remove('aberto');
   });
 
   // Fechar dropdowns de categoria ao clicar fora
