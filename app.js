@@ -185,8 +185,8 @@ function confirmarModal(titulo, mensagem, aoConfirmar) {
 
   modal.innerHTML = `
     <h2>${titulo}</h2>
-    <p style="margin:14px 0;line-height:1.6;color:var(--cor-texto-suave)">${mensagem}</p>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+    <p class="modal-descricao">${mensagem}</p>
+    <div class="modal-acoes">
       <button id="btn-confirmar-cancelar" class="btn btn-secundario">Cancelar</button>
       <button id="btn-confirmar-ok" class="btn btn-perigo">Excluir</button>
     </div>
@@ -201,6 +201,43 @@ function confirmarModal(titulo, mensagem, aoConfirmar) {
   document.getElementById('btn-confirmar-ok').addEventListener('click', () => {
     overlay.classList.remove('visivel');
     aoConfirmar();
+  });
+}
+
+function confirmarModalRecorrente(titulo, mensagem, aoExcluirEste, aoExcluirTodos) {
+  const overlay = document.getElementById('overlay-modal');
+  const modal = document.getElementById('modal');
+  const htmlAnterior = modal.innerHTML;
+  const visivel = overlay.classList.contains('visivel');
+
+  modal.innerHTML = `
+    <h2>${titulo}</h2>
+    <p class="modal-descricao">${mensagem}</p>
+    <div class="modal-recorrente-info">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Este é um item recorrente. Escolha o que deseja excluir.
+    </div>
+    <div class="modal-acoes-recorrente">
+      <button id="btn-rec-cancelar" class="btn btn-secundario btn-cancelar-rec">Cancelar</button>
+      <button id="btn-rec-este" class="btn btn-perigo" style="opacity:0.8">Só este</button>
+      <button id="btn-rec-todos" class="btn btn-perigo">Todos</button>
+    </div>
+  `;
+  overlay.classList.add('visivel');
+
+  document.getElementById('btn-rec-cancelar').addEventListener('click', () => {
+    if (visivel) { modal.innerHTML = htmlAnterior; }
+    else { overlay.classList.remove('visivel'); }
+  });
+
+  document.getElementById('btn-rec-este').addEventListener('click', () => {
+    overlay.classList.remove('visivel');
+    aoExcluirEste();
+  });
+
+  document.getElementById('btn-rec-todos').addEventListener('click', () => {
+    overlay.classList.remove('visivel');
+    aoExcluirTodos();
   });
 }
 
@@ -366,7 +403,7 @@ function projetarReceitasRecorrentes() {
     const diaAjustado = Math.min(dia, diasNoMes);
     const dataStr = `${mesStr}-${String(diaAjustado).padStart(2, '0')}`;
 
-    novas.push({ id: gerarId(), data: dataStr, descricao: r.descricao, valor: r.valor, recorrente: true });
+    novas.push({ id: gerarId(), data: dataStr, descricao: r.descricao, valor: r.valor, recorrente: true, categoriaId: r.categoriaId || null });
   });
 
   if (novas.length) {
@@ -1270,21 +1307,29 @@ function renderizarFormularioGasto(gasto = null) {
             </button>
           </div>
         </div>
-        <div class="form-linha">
-          <div class="form-grupo">
-            <label for="inp-status">Status</label>
-            <select id="inp-status">
-              <option value="pago" ${!gasto || gasto.status !== 'pendente' ? 'selected' : ''}>Pago</option>
-              <option value="pendente" ${gasto && gasto.status === 'pendente' ? 'selected' : ''}>Pendente</option>
-            </select>
-          </div>
-          <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px;padding-top:22px">
-            <input type="checkbox" id="inp-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${gasto && gasto.recorrente ? 'checked' : ''} />
-            <label for="inp-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-              Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
-            </label>
+        <div class="form-grupo">
+          <label>Status</label>
+          <div class="status-selector">
+            <input type="hidden" id="inp-status" value="${gasto && gasto.status === 'pendente' ? 'pendente' : 'pago'}" />
+            <button type="button" class="status-btn ${!gasto || gasto.status !== 'pendente' ? 'ativo pago' : ''}" data-status="pago">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Pago
+            </button>
+            <button type="button" class="status-btn ${gasto && gasto.status === 'pendente' ? 'ativo pendente' : ''}" data-status="pendente">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Pendente
+            </button>
           </div>
         </div>
+        <label class="toggle-recorrente" for="inp-recorrente">
+          <input type="checkbox" id="inp-recorrente" class="toggle-check" ${gasto && gasto.recorrente ? 'checked' : ''} />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <svg class="toggle-icone" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <span class="toggle-texto">
+            <strong>Recorrente</strong>
+            <span>Repete todo mês</span>
+          </span>
+        </label>
         <div class="acoes-form">
           <button type="submit" class="btn btn-primario">${edicao ? 'Salvar alterações' : 'Adicionar'}</button>
           <button type="button" class="btn btn-secundario" id="btn-cancelar-form">Cancelar</button>
@@ -1303,6 +1348,15 @@ function renderizarFormularioGasto(gasto = null) {
   });
 
   inicializarSelectCategoria('inp-categoria');
+
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.status;
+      document.getElementById('inp-status').value = val;
+      document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ativo', 'pago', 'pendente'));
+      btn.classList.add('ativo', val);
+    });
+  });
 
   document.getElementById('btn-nova-cat-rapido').addEventListener('click', () => {
     abrirModalCategoriaRapido();
@@ -1505,7 +1559,7 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
       <div class="form-grupo">
         <label for="inp-descricao">Descrição</label>
         <input type="text" id="inp-descricao" placeholder="Ex: Supermercado" value="${descPreenchida}" required maxlength="120" />
-        <div id="sugestao-categoria" style="font-size:12px;color:var(--cor-texto-suave);margin-top:5px;min-height:16px"></div>
+        <div id="sugestao-categoria" class="sugestao-cat"></div>
       </div>
       <div class="form-grupo">
         <label for="inp-obs">Observação <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(opcional)</span></label>
@@ -1513,27 +1567,35 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
       </div>
       <div class="form-grupo">
         <label>Categoria</label>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div class="campo-categoria-row">
           ${htmlSelectCategoria('inp-categoria', categorias, catPreenchida)}
-          <button type="button" id="btn-nova-cat-rapido" class="btn btn-secundario" style="padding:9px 14px;white-space:nowrap">+ Nova</button>
+          <button type="button" id="btn-nova-cat-rapido" class="btn btn-secundario btn-nova-cat">+ Nova</button>
         </div>
       </div>
-      <div class="form-linha">
-        <div class="form-grupo">
-          <label for="inp-status">Status</label>
-          <select id="inp-status">
-            <option value="pago" ${statusPreenchido === 'pago' ? 'selected' : ''}>Pago</option>
-            <option value="pendente" ${statusPreenchido === 'pendente' ? 'selected' : ''}>Pendente</option>
-          </select>
-        </div>
-        <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px;padding-top:22px">
-          <input type="checkbox" id="inp-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${recorrentePreenchido ? 'checked' : ''} />
-          <label for="inp-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-            Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
-          </label>
+      <div class="form-grupo">
+        <label>Status</label>
+        <div class="status-selector">
+          <input type="hidden" id="inp-status" value="${statusPreenchido}" />
+          <button type="button" class="status-btn ${statusPreenchido === 'pago' ? 'ativo pago' : ''}" data-status="pago">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Pago
+          </button>
+          <button type="button" class="status-btn ${statusPreenchido === 'pendente' ? 'ativo pendente' : ''}" data-status="pendente">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Pendente
+          </button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <label class="toggle-recorrente" for="inp-recorrente">
+        <input type="checkbox" id="inp-recorrente" class="toggle-check" ${recorrentePreenchido ? 'checked' : ''} />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <svg class="toggle-icone" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span class="toggle-texto">
+          <strong>Recorrente</strong>
+          <span>Repete todo mês</span>
+        </span>
+      </label>
+      <div class="modal-acoes">
         <button type="button" id="btn-cancelar-modal-gasto" class="btn btn-secundario">Cancelar</button>
         <button type="submit" class="btn btn-primario">${txtBotao}</button>
       </div>
@@ -1542,6 +1604,16 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
   overlay.classList.add('visivel');
 
   inicializarSelectCategoria('inp-categoria');
+
+  // Status pill buttons
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.status;
+      document.getElementById('inp-status').value = val;
+      document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ativo', 'pago', 'pendente'));
+      btn.classList.add('ativo', val);
+    });
+  });
 
   // Auto-categorização
   const inpDescricao = document.getElementById('inp-descricao');
@@ -1574,9 +1646,30 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
   });
 
   document.getElementById('btn-nova-cat-rapido').addEventListener('click', () => {
+    const prefill = {
+      valor: document.getElementById('inp-valor').value,
+      data: document.getElementById('inp-data').value,
+      descricao: document.getElementById('inp-descricao').value,
+      obs: document.getElementById('inp-obs').value,
+      categoriaId: document.getElementById('inp-categoria').value || null,
+      status: document.getElementById('inp-status').value,
+      recorrente: document.getElementById('inp-recorrente').checked,
+    };
+    const restaurar = (catId) => {
+      abrirModalGasto(gasto, isDuplicar, aoSalvarExtra);
+      document.getElementById('inp-valor').value = prefill.valor;
+      document.getElementById('inp-data').value = prefill.data;
+      document.getElementById('inp-descricao').value = prefill.descricao;
+      document.getElementById('inp-obs').value = prefill.obs;
+      document.getElementById('inp-recorrente').checked = prefill.recorrente;
+      document.getElementById('inp-status').value = prefill.status;
+      document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ativo', 'pago', 'pendente'));
+      document.querySelector(`.status-btn[data-status="${prefill.status}"]`)?.classList.add('ativo', prefill.status);
+      atualizarSelectCategorias(catId);
+    };
     abrirModalNovaCategoria(
-      novaId => { abrirModalGasto(gasto, isDuplicar); atualizarSelectCategorias(novaId); },
-      () => abrirModalGasto(gasto, isDuplicar)
+      novaId => restaurar(novaId),
+      () => restaurar(prefill.categoriaId)
     );
   });
 
@@ -1595,9 +1688,9 @@ function excluirGasto(id) {
   const gasto = todos.find(g => g.id === id);
   if (!gasto) return;
 
-  confirmarModal('Excluir gasto', `Deseja excluir <strong>${gasto.descricao}</strong>?`, () => {
+  const excluirEste = () => {
     const backup = [...todos];
-    if (gasto.recorrente) registrarExclusaoRecorrente(gasto);
+    registrarExclusaoRecorrente(gasto);
     salvarGastos(todos.filter(g => g.id !== id));
     renderizarDashboard();
     mostrarToast('Gasto excluído.', 'sucesso', () => {
@@ -1605,7 +1698,38 @@ function excluirGasto(id) {
       renderizarDashboard();
       mostrarToast('Exclusão desfeita.', 'sucesso');
     });
-  });
+  };
+
+  if (gasto.recorrente) {
+    const totalRecorrentes = todos.filter(g => g.recorrente && g.descricao === gasto.descricao).length;
+    confirmarModalRecorrente(
+      'Excluir gasto recorrente',
+      `Deseja excluir <strong>${gasto.descricao}</strong>?`,
+      excluirEste,
+      () => {
+        const backup = [...todos];
+        const idsRemover = new Set(todos.filter(g => g.recorrente && g.descricao === gasto.descricao).map(g => g.id));
+        salvarGastos(todos.filter(g => !idsRemover.has(g.id)));
+        renderizarDashboard();
+        mostrarToast(`${totalRecorrentes} ocorrência(s) excluída(s).`, 'sucesso', () => {
+          salvarGastos(backup);
+          renderizarDashboard();
+          mostrarToast('Exclusão desfeita.', 'sucesso');
+        });
+      }
+    );
+  } else {
+    confirmarModal('Excluir gasto', `Deseja excluir <strong>${gasto.descricao}</strong>?`, () => {
+      const backup = [...todos];
+      salvarGastos(todos.filter(g => g.id !== id));
+      renderizarDashboard();
+      mostrarToast('Gasto excluído.', 'sucesso', () => {
+        salvarGastos(backup);
+        renderizarDashboard();
+        mostrarToast('Exclusão desfeita.', 'sucesso');
+      });
+    });
+  }
 }
 
 // ===== Modal de edição =====
@@ -2030,9 +2154,9 @@ function registrarEventosReceitas(container) {
       const receita = todas.find(r => r.id === btn.dataset.id);
       if (!receita) return;
 
-      confirmarModal('Excluir receita', `Deseja excluir <strong>${receita.descricao}</strong>?`, () => {
+      const excluirEsta = () => {
         const backup = [...todas];
-        if (receita.recorrente) registrarExclusaoRecorrenteReceita(receita);
+        registrarExclusaoRecorrenteReceita(receita);
         salvarReceitas(todas.filter(r => r.id !== btn.dataset.id));
         renderizarDashboard();
         mostrarToast('Receita excluída.', 'sucesso', () => {
@@ -2040,7 +2164,38 @@ function registrarEventosReceitas(container) {
           renderizarDashboard();
           mostrarToast('Exclusão desfeita.', 'sucesso');
         });
-      });
+      };
+
+      if (receita.recorrente) {
+        const totalRecorrentes = todas.filter(r => r.recorrente && r.descricao === receita.descricao).length;
+        confirmarModalRecorrente(
+          'Excluir receita recorrente',
+          `Deseja excluir <strong>${receita.descricao}</strong>?`,
+          excluirEsta,
+          () => {
+            const backup = [...todas];
+            const idsRemover = new Set(todas.filter(r => r.recorrente && r.descricao === receita.descricao).map(r => r.id));
+            salvarReceitas(todas.filter(r => !idsRemover.has(r.id)));
+            renderizarDashboard();
+            mostrarToast(`${totalRecorrentes} ocorrência(s) excluída(s).`, 'sucesso', () => {
+              salvarReceitas(backup);
+              renderizarDashboard();
+              mostrarToast('Exclusão desfeita.', 'sucesso');
+            });
+          }
+        );
+      } else {
+        confirmarModal('Excluir receita', `Deseja excluir <strong>${receita.descricao}</strong>?`, () => {
+          const backup = [...todas];
+          salvarReceitas(todas.filter(r => r.id !== btn.dataset.id));
+          renderizarDashboard();
+          mostrarToast('Receita excluída.', 'sucesso', () => {
+            salvarReceitas(backup);
+            renderizarDashboard();
+            mostrarToast('Exclusão desfeita.', 'sucesso');
+          });
+        });
+      }
     });
   });
 }
@@ -2082,18 +2237,21 @@ function abrirModalReceita(id = null, catIdPreselect = null) {
       </div>
       <div class="form-grupo">
         <label>Categoria <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(opcional)</span></label>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div class="campo-categoria-row">
           ${htmlSelectCategoria('rec-categoria', categorias, catSelecionada, 'Sem categoria')}
-          <button type="button" id="btn-nova-cat-receita" class="btn btn-secundario" style="padding:9px 14px;white-space:nowrap">+ Nova</button>
+          <button type="button" id="btn-nova-cat-receita" class="btn btn-secundario btn-nova-cat">+ Nova</button>
         </div>
       </div>
-      <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px">
-        <input type="checkbox" id="rec-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${receita && receita.recorrente ? 'checked' : ''} />
-        <label for="rec-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-          Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
-        </label>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <label class="toggle-recorrente" for="rec-recorrente">
+        <input type="checkbox" id="rec-recorrente" class="toggle-check" ${receita && receita.recorrente ? 'checked' : ''} />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <svg class="toggle-icone" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span class="toggle-texto">
+          <strong>Recorrente</strong>
+          <span>Repete todo mês</span>
+        </span>
+      </label>
+      <div class="modal-acoes">
         <button type="button" id="btn-cancelar-receita" class="btn btn-secundario">Cancelar</button>
         <button type="submit" class="btn btn-sucesso">${receita ? 'Salvar' : 'Adicionar'}</button>
       </div>
@@ -2103,10 +2261,24 @@ function abrirModalReceita(id = null, catIdPreselect = null) {
   inicializarSelectCategoria('rec-categoria');
 
   document.getElementById('btn-nova-cat-receita').addEventListener('click', () => {
-    const catAtual = document.getElementById('rec-categoria').value || null;
+    const prefill = {
+      valor: document.getElementById('rec-valor').value,
+      data: document.getElementById('rec-data').value,
+      descricao: document.getElementById('rec-descricao').value,
+      recorrente: document.getElementById('rec-recorrente').checked,
+      categoriaId: document.getElementById('rec-categoria').value || null,
+    };
+    const restaurar = (catId) => {
+      abrirModalReceita(id);
+      document.getElementById('rec-valor').value = prefill.valor;
+      document.getElementById('rec-data').value = prefill.data;
+      document.getElementById('rec-descricao').value = prefill.descricao;
+      document.getElementById('rec-recorrente').checked = prefill.recorrente;
+      selecionarCategoriaDropdown('rec-categoria', catId !== undefined ? catId : prefill.categoriaId);
+    };
     abrirModalNovaCategoria(
-      novaId => abrirModalReceita(id, novaId),
-      () => abrirModalReceita(id, catAtual),
+      novaId => restaurar(novaId),
+      () => restaurar(undefined),
       'receitas'
     );
   });
@@ -2178,18 +2350,21 @@ function duplicarReceita(id, catIdPreselect = null) {
       </div>
       <div class="form-grupo">
         <label>Categoria <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(opcional)</span></label>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div class="campo-categoria-row">
           ${htmlSelectCategoria('rec-categoria', categorias, catSelecionada, 'Sem categoria')}
-          <button type="button" id="btn-nova-cat-receita" class="btn btn-secundario" style="padding:9px 14px;white-space:nowrap">+ Nova</button>
+          <button type="button" id="btn-nova-cat-receita" class="btn btn-secundario btn-nova-cat">+ Nova</button>
         </div>
       </div>
-      <div class="form-grupo" style="flex-direction:row;align-items:center;gap:10px">
-        <input type="checkbox" id="rec-recorrente" style="width:16px;height:16px;cursor:pointer;accent-color:var(--cor-ativo)" ${receita.recorrente ? 'checked' : ''} />
-        <label for="rec-recorrente" style="cursor:pointer;font-weight:500;margin:0;font-size:13px">
-          Recorrente <span style="font-size:11px;color:var(--cor-texto-suave);font-weight:400">(repete todo mÃªs)</span>
-        </label>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <label class="toggle-recorrente" for="rec-recorrente">
+        <input type="checkbox" id="rec-recorrente" class="toggle-check" ${receita.recorrente ? 'checked' : ''} />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <svg class="toggle-icone" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span class="toggle-texto">
+          <strong>Recorrente</strong>
+          <span>Repete todo mês</span>
+        </span>
+      </label>
+      <div class="modal-acoes">
         <button type="button" id="btn-cancelar-receita" class="btn btn-secundario">Cancelar</button>
         <button type="submit" class="btn btn-sucesso">Duplicar</button>
       </div>
@@ -2199,10 +2374,24 @@ function duplicarReceita(id, catIdPreselect = null) {
   inicializarSelectCategoria('rec-categoria');
 
   document.getElementById('btn-nova-cat-receita').addEventListener('click', () => {
-    const catAtual = document.getElementById('rec-categoria').value || null;
+    const prefill = {
+      valor: document.getElementById('rec-valor').value,
+      data: document.getElementById('rec-data').value,
+      descricao: document.getElementById('rec-descricao').value,
+      recorrente: document.getElementById('rec-recorrente').checked,
+      categoriaId: document.getElementById('rec-categoria').value || null,
+    };
+    const restaurar = (catId) => {
+      duplicarReceita(id);
+      document.getElementById('rec-valor').value = prefill.valor;
+      document.getElementById('rec-data').value = prefill.data;
+      document.getElementById('rec-descricao').value = prefill.descricao;
+      document.getElementById('rec-recorrente').checked = prefill.recorrente;
+      selecionarCategoriaDropdown('rec-categoria', catId !== undefined ? catId : prefill.categoriaId);
+    };
     abrirModalNovaCategoria(
-      novaId => duplicarReceita(id, novaId),
-      () => duplicarReceita(id, catAtual),
+      novaId => restaurar(novaId),
+      () => restaurar(undefined),
       'receitas'
     );
   });
@@ -2945,7 +3134,7 @@ function renderizarCategorias() {
   function listaHTML(cats) {
     if (!cats.length) return '<p style="color:var(--cor-texto-suave);font-size:13px;padding:4px 0">Nenhuma categoria ainda.</p>';
     return cats.map(c => `
-      <div class="item-categoria" data-id="${c.id}">
+      <div class="item-categoria" data-id="${c.id}" style="--cat-cor:${c.cor}">
         <span class="amostra-cor" style="background:${c.cor}"></span>
         <span class="nome-categoria">${c.nome}</span>
         <div class="acoes-categoria">
@@ -3416,8 +3605,8 @@ function renderizarResumoAnual() {
               const cat = categorias.find(c => c.id === g.categoriaId);
               const cor = cat ? cat.cor : '#aaa';
               return `
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--cor-borda)">
-                  <span style="font-size:18px;font-weight:800;color:var(--cor-texto-suave);min-width:24px">${i + 1}</span>
+                <div class="rank-item">
+                  <span class="rank-numero">${i + 1}</span>
                   <span class="cor-dot" style="background:${cor}"></span>
                   <div style="flex:1;min-width:0">
                     <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.descricao}</div>
@@ -3729,20 +3918,20 @@ function renderizarCompararMeses() {
     const temDiff = valA > 0 || valB > 0;
     const corDiff = diff === 0 ? 'var(--cor-texto-suave)' : (inverso ? (diff < 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)') : (diff > 0 ? 'var(--cor-sucesso)' : 'var(--cor-perigo)'));
     return `
-      <div class="card" style="text-align:center;padding:20px">
-        <div style="font-size:12px;color:var(--cor-texto-suave);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${rotulo}</div>
-        <div style="display:flex;justify-content:space-around;align-items:center;gap:16px">
-          <div>
-            <div style="font-size:11px;color:var(--cor-texto-suave);margin-bottom:4px">${nomesMeses[mesA]} ${anoA}</div>
-            <div style="font-size:16px;font-weight:700">${formatarMoeda(valA)}</div>
+      <div class="card card-comparativo">
+        <div class="comp-rotulo">${rotulo}</div>
+        <div class="comp-valores">
+          <div class="comp-coluna">
+            <div class="comp-label">${nomesMeses[mesA]} ${anoA}</div>
+            <div class="comp-valor">${formatarMoeda(valA)}</div>
           </div>
-          <div style="font-size:16px;font-weight:700;color:var(--cor-texto-suave)">vs</div>
-          <div>
-            <div style="font-size:11px;color:var(--cor-texto-suave);margin-bottom:4px">${nomesMeses[mesB]} ${anoB}</div>
-            <div style="font-size:16px;font-weight:700">${formatarMoeda(valB)}</div>
+          <div class="comp-vs">vs</div>
+          <div class="comp-coluna">
+            <div class="comp-label">${nomesMeses[mesB]} ${anoB}</div>
+            <div class="comp-valor">${formatarMoeda(valB)}</div>
           </div>
         </div>
-        ${temDiff ? `<div style="margin-top:12px;font-size:13px;color:${corDiff};font-weight:600">
+        ${temDiff ? `<div class="comp-diff" style="color:${corDiff}">
           ${diff >= 0 ? '+' : ''}${formatarMoeda(diff)} ${badgeVar(valA, valB, inverso)}
         </div>` : ''}
       </div>
@@ -3754,12 +3943,12 @@ function renderizarCompararMeses() {
     return gastos.map((g, i) => {
       const cat = categorias.find(c => c.id === g.categoriaId);
       return `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--cor-borda)">
-          <span style="font-size:16px;font-weight:800;color:var(--cor-texto-suave);min-width:20px">${i + 1}</span>
+        <div class="rank-item">
+          <span class="rank-numero">${i + 1}</span>
           <span class="cor-dot" style="background:${cat ? cat.cor : '#aaa'}"></span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.descricao}</div>
-            <div style="font-size:11px;color:var(--cor-texto-suave)">${formatarData(g.data)}</div>
+          <div class="rank-conteudo">
+            <div class="rank-desc">${g.descricao}</div>
+            <div class="rank-data">${formatarData(g.data)}</div>
           </div>
           <span style="font-weight:700;font-size:13px;color:var(--cor-perigo)">${formatarMoeda(g.valor)}</span>
         </div>
@@ -3772,12 +3961,12 @@ function renderizarCompararMeses() {
     return receitas.map((r, i) => {
       const cat = categorias.find(c => c.id === r.categoriaId);
       return `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--cor-borda)">
-          <span style="font-size:16px;font-weight:800;color:var(--cor-texto-suave);min-width:20px">${i + 1}</span>
+        <div class="rank-item">
+          <span class="rank-numero">${i + 1}</span>
           ${cat ? `<span class="cor-dot" style="background:${cat.cor}"></span>` : ''}
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.descricao}</div>
-            <div style="font-size:11px;color:var(--cor-texto-suave)">${formatarData(r.data)}</div>
+          <div class="rank-conteudo">
+            <div class="rank-desc">${r.descricao}</div>
+            <div class="rank-data">${formatarData(r.data)}</div>
           </div>
           <span style="font-weight:700;font-size:13px;color:var(--cor-sucesso)">${formatarMoeda(r.valor)}</span>
         </div>
@@ -3885,10 +4074,15 @@ function renderizarCompararMeses() {
 
 // ===== Busca Global =====
 
+function opsCategoriasBusca(tipo) {
+  const cats = tipo === 'gastos' ? categoriasGastos()
+             : tipo === 'receitas' ? categoriasReceitas()
+             : carregarCategorias();
+  return cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+}
+
 function renderizarBuscaGlobal() {
   const secao = document.getElementById('secao-busca');
-  const categorias = carregarCategorias();
-  const opsCats = categorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
   secao.innerHTML = `
     <h1 class="titulo-secao">Busca Global</h1>
     <div class="card" style="margin-bottom:24px">
@@ -3898,25 +4092,25 @@ function renderizarBuscaGlobal() {
         <div>
           <div class="busca-filtro-label">Tipo</div>
           <select id="fb-tipo">
-            <option value="todos">Todos</option>
-            <option value="gastos">Gastos</option>
-            <option value="receitas">Receitas</option>
+            <option value="todos" ${filtroBusca.tipo === 'todos' ? 'selected' : ''}>Todos</option>
+            <option value="gastos" ${filtroBusca.tipo === 'gastos' ? 'selected' : ''}>Gastos</option>
+            <option value="receitas" ${filtroBusca.tipo === 'receitas' ? 'selected' : ''}>Receitas</option>
           </select>
         </div>
         <div>
           <div class="busca-filtro-label">Categoria</div>
           <select id="fb-categoria">
             <option value="">Todas</option>
-            ${opsCats}
+            ${opsCategoriasBusca(filtroBusca.tipo)}
           </select>
         </div>
         <div>
           <div class="busca-filtro-label">Valor mín</div>
-          <input type="number" id="fb-valor-min" placeholder="R$ 0" min="0" step="0.01" />
+          <input type="number" id="fb-valor-min" placeholder="R$ 0" min="0" step="0.01" value="${filtroBusca.valorMin}" />
         </div>
         <div>
           <div class="busca-filtro-label">Valor máx</div>
-          <input type="number" id="fb-valor-max" placeholder="R$ ∞" min="0" step="0.01" />
+          <input type="number" id="fb-valor-max" placeholder="R$ ∞" min="0" step="0.01" value="${filtroBusca.valorMax}" />
         </div>
         <button id="btn-limpar-busca">✕ Limpar filtros</button>
       </div>
@@ -3928,43 +4122,69 @@ function renderizarBuscaGlobal() {
   const inp = document.getElementById('inp-busca-global');
   inp.focus();
   const disparar = () => executarBuscaGlobal(inp.value.trim());
+
   inp.addEventListener('input', disparar);
-  document.getElementById('fb-tipo').addEventListener('change', e => { filtroBusca.tipo = e.target.value; disparar(); });
+
+  document.getElementById('fb-tipo').addEventListener('change', e => {
+    filtroBusca.tipo = e.target.value;
+    // Recria o select de categoria filtrando pelo tipo escolhido
+    const selCat = document.getElementById('fb-categoria');
+    selCat.innerHTML = `<option value="">Todas</option>${opsCategoriasBusca(filtroBusca.tipo)}`;
+    // Reseta categoria se não pertence ao novo tipo
+    if (filtroBusca.categoriaId) {
+      const ainda = [...selCat.options].some(o => o.value === filtroBusca.categoriaId);
+      if (!ainda) filtroBusca.categoriaId = '';
+    }
+    selCat.value = filtroBusca.categoriaId;
+    disparar();
+  });
+
   document.getElementById('fb-categoria').addEventListener('change', e => { filtroBusca.categoriaId = e.target.value; disparar(); });
   document.getElementById('fb-valor-min').addEventListener('input', e => { filtroBusca.valorMin = e.target.value; disparar(); });
   document.getElementById('fb-valor-max').addEventListener('input', e => { filtroBusca.valorMax = e.target.value; disparar(); });
+
   document.getElementById('btn-limpar-busca').addEventListener('click', () => {
     filtroBusca = { tipo: 'todos', categoriaId: '', valorMin: '', valorMax: '' };
     document.getElementById('fb-tipo').value = 'todos';
-    document.getElementById('fb-categoria').value = '';
+    const selCat = document.getElementById('fb-categoria');
+    selCat.innerHTML = `<option value="">Todas</option>${opsCategoriasBusca('todos')}`;
+    selCat.value = '';
     document.getElementById('fb-valor-min').value = '';
     document.getElementById('fb-valor-max').value = '';
     disparar();
   });
+
+  // Se já tem filtro ativo ao abrir a seção, executa imediatamente
+  disparar();
 }
 
 function executarBuscaGlobal(termo) {
   const container = document.getElementById('resultados-busca');
-  if (!termo) { container.innerHTML = ''; return; }
+  const { tipo, categoriaId, valorMin, valorMax } = filtroBusca;
+  const temFiltroAtivo = termo || tipo !== 'todos' || categoriaId || valorMin || valorMax;
+  if (!temFiltroAtivo) { container.innerHTML = ''; return; }
 
   const categorias = carregarCategorias();
-  const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const highlight = str => str.replace(regex, '<mark style="background:var(--cor-ativo);color:#fff;border-radius:3px;padding:0 2px">$1</mark>');
+  const highlight = termo
+    ? (() => {
+        const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return str => str.replace(regex, '<mark>$1</mark>');
+      })()
+    : str => str;
 
   const termoLow = termo.toLowerCase();
-  const { tipo, categoriaId, valorMin, valorMax } = filtroBusca;
   const vMin = valorMin ? parseFloat(valorMin) : null;
   const vMax = valorMax ? parseFloat(valorMax) : null;
 
   const todosGastos = tipo === 'receitas' ? [] : carregarGastos().filter(g => {
-    if (!g.descricao.toLowerCase().includes(termoLow)) return false;
+    if (termo && !g.descricao.toLowerCase().includes(termoLow)) return false;
     if (categoriaId && g.categoriaId !== categoriaId) return false;
     if (vMin !== null && g.valor < vMin) return false;
     if (vMax !== null && g.valor > vMax) return false;
     return true;
   });
   const todasReceitas = tipo === 'gastos' ? [] : carregarReceitas().filter(r => {
-    if (!r.descricao.toLowerCase().includes(termoLow)) return false;
+    if (termo && !r.descricao.toLowerCase().includes(termoLow)) return false;
     if (categoriaId && r.categoriaId !== categoriaId) return false;
     if (vMin !== null && r.valor < vMin) return false;
     if (vMax !== null && r.valor > vMax) return false;
@@ -3972,7 +4192,8 @@ function executarBuscaGlobal(termo) {
   });
 
   if (!todosGastos.length && !todasReceitas.length) {
-    container.innerHTML = `<p class="sem-gastos">Nenhum resultado para "<strong>${termo}</strong>"</p>`;
+    const msg = termo ? `Nenhum resultado para "<strong>${termo}</strong>"` : 'Nenhum resultado para os filtros aplicados.';
+    container.innerHTML = `<p class="sem-gastos">${msg}</p>`;
     return;
   }
 
@@ -4009,7 +4230,7 @@ function executarBuscaGlobal(termo) {
         <tr class="${pendente ? 'linha-pendente' : ''}">
           <td>${formatarData(g.data)}</td>
           <td>
-            <span style="font-size:10px;background:rgba(240,79,90,0.15);color:var(--cor-perigo);border-radius:4px;padding:1px 6px;margin-right:4px;font-weight:600">Gasto</span>
+            <span class="busca-tipo-tag busca-tipo-gasto">Gasto</span>
             ${g.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${highlight(g.descricao)}
           </td>
           <td><span class="badge-categoria" style="background:${corCat}">${nomeCat}</span></td>
@@ -4032,7 +4253,7 @@ function executarBuscaGlobal(termo) {
         <tr>
           <td>${formatarData(r.data)}</td>
           <td>
-            <span style="font-size:10px;background:rgba(46,204,113,0.15);color:var(--cor-sucesso);border-radius:4px;padding:1px 6px;margin-right:4px;font-weight:600">Receita</span>
+            <span class="busca-tipo-tag busca-tipo-receita">Receita</span>
             ${r.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${highlight(r.descricao)}
           </td>
           <td>${r.categoriaId ? `<span class="badge-categoria" style="background:${corCat}">${nomeCat}</span>` : '<span style="color:var(--cor-texto-suave);font-size:12px">—</span>'}</td>
@@ -4052,12 +4273,12 @@ function executarBuscaGlobal(termo) {
     if (receitasMes.length) resumo.push(`${receitasMes.length} receita(s): ${formatarMoeda(totalReceitasMes)}`);
 
     return `
-      <div style="margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <h3 style="font-size:14px;font-weight:700;color:var(--cor-texto-suave)">${nomeMesStr} ${ano}</h3>
-          <span style="font-size:13px;color:var(--cor-texto-suave)">${resumo.join(' · ')}</span>
+      <div class="busca-grupo">
+        <div class="busca-grupo-header">
+          <h3 class="busca-mes-titulo">${nomeMesStr} ${ano}</h3>
+          <span class="busca-mes-resumo">${resumo.join(' · ')}</span>
         </div>
-        <div class="card" style="padding:0;overflow:hidden">
+        <div class="card busca-resultado-card">
           <table class="tabela-gastos">
             <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead>
             <tbody>${linhasGastos}${linhasReceitas}</tbody>
@@ -4070,10 +4291,10 @@ function executarBuscaGlobal(termo) {
   const totalR = todasReceitas.reduce((s, r) => s + r.valor, 0);
   const totalItensGlobal = todosGastos.length + todasReceitas.length;
   container.innerHTML = `
-    <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:16px">
-      ${totalItensGlobal} resultado(s) em ${Object.keys(porMes).length} mês(es)
-      ${todosGastos.length ? ` · Gastos: <strong>${formatarMoeda(totalG)}</strong>` : ''}
-      ${todasReceitas.length ? ` · Receitas: <strong style="color:var(--cor-sucesso)">${formatarMoeda(totalR)}</strong>` : ''}
+    <p class="busca-sumario">
+      <strong>${totalItensGlobal}</strong> resultado(s) em <strong>${Object.keys(porMes).length}</strong> mês(es)
+      ${todosGastos.length ? ` &nbsp;·&nbsp; Gastos: <strong style="color:var(--cor-perigo)">${formatarMoeda(totalG)}</strong>` : ''}
+      ${todasReceitas.length ? ` &nbsp;·&nbsp; Receitas: <strong style="color:var(--cor-sucesso)">${formatarMoeda(totalR)}</strong>` : ''}
     </p>
     ${html}`;
 

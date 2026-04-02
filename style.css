@@ -1196,6 +1196,79 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   animation: pulso-pendente 2.5s ease-in-out infinite;
 }
 
+/* ===== Toggle switch recorrente ===== */
+.toggle-recorrente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--cor-borda);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 4px;
+}
+.toggle-recorrente:has(.toggle-check:checked) {
+  border-color: var(--cor-ativo);
+  background: rgba(108,99,255,0.06);
+}
+.toggle-check { display: none; }
+.toggle-track {
+  width: 40px;
+  height: 22px;
+  background: var(--cor-borda);
+  border-radius: 11px;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-check:checked + .toggle-track { background: var(--cor-ativo); box-shadow: 0 0 8px var(--cor-ativo-glow); }
+.toggle-thumb {
+  position: absolute;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: left 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+.toggle-check:checked + .toggle-track .toggle-thumb { left: 21px; }
+.toggle-texto { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.toggle-texto strong { font-size: 13px; font-weight: 600; color: var(--cor-texto); }
+.toggle-texto span { font-size: 11px; color: var(--cor-texto-suave); }
+.toggle-icone { color: var(--cor-ativo); opacity: 0.7; flex-shrink: 0; transition: opacity 0.2s; }
+.toggle-recorrente:has(.toggle-check:checked) .toggle-icone { opacity: 1; }
+
+/* ===== Seletor de status (pago/pendente) ===== */
+.status-selector { display: flex; gap: 8px; }
+.status-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--cor-borda);
+  background: transparent;
+  color: var(--cor-texto-suave);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+  justify-content: center;
+}
+.status-btn:hover:not(.ativo) { border-color: var(--cor-ativo); color: var(--cor-texto); }
+.status-btn.ativo.pago {
+  border-color: var(--cor-sucesso);
+  background: rgba(46,204,138,0.12);
+  color: var(--cor-sucesso);
+}
+.status-btn.ativo.pendente {
+  border-color: #f39c12;
+  background: rgba(243,156,18,0.12);
+  color: #f39c12;
+}
+
 /* ===== Card resumo — topo com ícone ===== */
 .card-resumo-topo {
   display: flex;
@@ -1865,4 +1938,1058 @@ body.tema-claro #btn-tema {
 #btn-limpar-busca:hover {
   border-color: var(--cor-perigo);
   color: var(--cor-perigo);
+}
+
+/* ===================================================
+   MELHORIAS DE FRONTEND
+   =================================================== */
+
+/* --- Tipografia: Urbanist --- */
+body {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* --- Textura de fundo: grade de pontos suave --- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(108,99,255,0.045) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+  z-index: 0;
+}
+body.tema-claro::before {
+  background-image: radial-gradient(circle, rgba(108,99,255,0.07) 1px, transparent 1px);
+}
+#app { position: relative; z-index: 1; }
+
+/* --- Sidebar: gradiente e borda --- */
+#sidebar {
+  background: linear-gradient(180deg, #07070f 0%, #0d0d1a 55%, #09090f 100%);
+  border-right: 1px solid rgba(108,99,255,0.12);
+}
+
+/* --- Logo: gradiente de texto --- */
+#logo {
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  margin-bottom: 4px;
+}
+#logo h1 {
+  background: linear-gradient(130deg, #fff 0%, rgba(190,180,255,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* --- Menu ativo: gradiente + glow --- */
+.menu-item.ativo {
+  background: linear-gradient(130deg, var(--cor-ativo) 0%, rgba(100,80,220,0.8) 100%);
+  box-shadow: 0 2px 16px rgba(108,99,255,0.38), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+/* --- Títulos de seção: gradiente + tipografia mais forte --- */
+.titulo-secao {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  border-left-width: 4px;
+  background: linear-gradient(130deg, var(--cor-texto) 0%, rgba(190,180,255,0.75) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+body.tema-claro .titulo-secao {
+  background: linear-gradient(130deg, var(--cor-texto) 0%, var(--cor-ativo) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* --- Cards de resumo: ícone com fundo colorido + glow blob + valor impactante --- */
+.card-resumo { overflow: hidden; position: relative; }
+
+/* Blob de cor no canto inferior direito */
+.card-resumo::after {
+  content: '';
+  position: absolute;
+  bottom: -28px;
+  right: -28px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0;
+  filter: blur(22px);
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.card-resumo:hover::after { opacity: 1; }
+.card-resumo.acento-roxo::after    { background: var(--cor-ativo); }
+.card-resumo.acento-verde::after   { background: var(--cor-sucesso); }
+.card-resumo.acento-amarelo::after { background: #f39c12; }
+.card-resumo.acento-vermelho::after { background: var(--cor-perigo); }
+.card-resumo.acento-azul::after    { background: #3b9eff; }
+
+/* Ícone com container colorido */
+.card-resumo-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  padding: 8px;
+  box-sizing: border-box;
+  opacity: 1;
+  flex-shrink: 0;
+}
+.acento-roxo .card-resumo-icone    { background: rgba(108,99,255,0.15); }
+.acento-verde .card-resumo-icone   { background: rgba(46,204,138,0.15); }
+.acento-amarelo .card-resumo-icone { background: rgba(243,156,18,0.15); }
+.acento-vermelho .card-resumo-icone { background: rgba(240,79,90,0.15); }
+.acento-azul .card-resumo-icone    { background: rgba(59,158,255,0.15); }
+
+/* Valor mais impactante */
+.card-resumo .valor {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+/* Rótulo com mais espaçamento de letra */
+.card-resumo .rotulo {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+/* --- FAB: gradiente mais rico --- */
+#fab-btn {
+  background: linear-gradient(135deg, var(--cor-ativo) 0%, #7c3aed 100%);
+  box-shadow: 0 4px 24px rgba(108,99,255,0.55), 0 2px 8px rgba(0,0,0,0.4);
+}
+#fab-btn:hover {
+  background: linear-gradient(135deg, #7c68ff 0%, #6d28d9 100%);
+  box-shadow: 0 6px 32px rgba(108,99,255,0.7), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* --- Modal: faixa de gradiente no topo --- */
+#modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cor-ativo), #a855f7 50%, var(--cor-sucesso));
+  border-radius: var(--raio) var(--raio) 0 0;
+}
+
+/* --- Botão primário: gradiente --- */
+.btn-primario {
+  background: linear-gradient(135deg, var(--cor-ativo) 0%, #7c3aed 100%);
+  box-shadow: 0 2px 10px rgba(108,99,255,0.3);
+  letter-spacing: 0.01em;
+}
+.btn-primario:hover {
+  background: linear-gradient(135deg, #7c68ff 0%, #6d28d9 100%);
+  box-shadow: 0 4px 18px rgba(108,99,255,0.5);
+  transform: translateY(-1px);
+}
+
+/* --- Botão de sucesso: gradiente --- */
+.btn-sucesso {
+  background: linear-gradient(135deg, var(--cor-sucesso) 0%, #1abc9c 100%);
+  box-shadow: 0 2px 10px rgba(46,204,138,0.25);
+}
+.btn-sucesso:hover {
+  background: linear-gradient(135deg, #27d98a 0%, #16a48e 100%);
+  box-shadow: 0 4px 18px rgba(46,204,138,0.4);
+  transform: translateY(-1px);
+}
+
+/* --- Aba ativa: fundo pill suave --- */
+.aba-btn.ativa {
+  background: rgba(108,99,255,0.1);
+  border-radius: 8px 8px 0 0;
+}
+
+/* --- Cabeçalho de tabela: fundo sutil --- */
+.tabela-gastos th {
+  background: rgba(108,99,255,0.03);
+}
+
+/* --- Input em foco: glow mais intenso --- */
+.form-grupo input:focus,
+.form-grupo select:focus,
+.form-grupo textarea:focus {
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.2), 0 1px 4px rgba(108,99,255,0.1);
+}
+
+/* --- Stepper ativo com brilho pulsante --- */
+.step.ativo .step-numero {
+  box-shadow: 0 0 0 4px var(--cor-ativo-glow), 0 0 16px rgba(108,99,255,0.3);
+}
+
+/* --- Badge de etapa com gradiente --- */
+.badge-etapa {
+  background: linear-gradient(135deg, var(--cor-ativo), #7c3aed);
+}
+
+/* --- Scrollbar mais refinada --- */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cor-ativo); }
+
+/* ===================================================
+   MELHORIAS VISUAIS — SEGUNDA RODADA
+   =================================================== */
+
+/* --- Seletor de mês: pill de vidro --- */
+#seletor-mes {
+  background: rgba(108,99,255,0.07);
+  border: 1px solid rgba(108,99,255,0.18);
+  border-radius: 50px;
+  padding: 4px;
+  gap: 0;
+}
+
+#seletor-mes button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  color: var(--cor-texto-suave);
+  transition: all 0.18s;
+}
+
+#seletor-mes button:hover {
+  background: rgba(108,99,255,0.2);
+  border-color: rgba(108,99,255,0.3);
+  color: var(--cor-texto);
+  box-shadow: none;
+}
+
+#label-mes {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  min-width: 148px;
+  padding: 0 8px;
+}
+
+/* --- Header do dashboard: card sutil --- */
+#secao-dashboard > div:first-child {
+  background: linear-gradient(135deg, rgba(108,99,255,0.05) 0%, transparent 70%);
+  border: 1px solid rgba(108,99,255,0.07);
+  border-radius: var(--raio);
+  padding: 16px 22px !important;
+  margin-bottom: 20px !important;
+}
+
+/* --- Itens de categoria: borda lateral colorida via CSS var --- */
+.item-categoria {
+  border-left: 3px solid var(--cat-cor, var(--cor-borda));
+  transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.item-categoria:hover {
+  background: rgba(255,255,255,0.025);
+  transform: translateX(3px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+/* Amostra de cor: maior e com forma arredondada */
+.amostra-cor {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  flex-shrink: 0;
+}
+
+/* --- Toast: dark glass card com borda lateral colorida --- */
+#toast {
+  background: rgba(12, 12, 22, 0.93);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-left: 3px solid var(--cor-ativo);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 2px 10px rgba(0,0,0,0.25);
+  color: var(--cor-texto);
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 14px 20px;
+  min-width: 240px;
+  max-width: 380px;
+  bottom: 28px;
+  right: 28px;
+}
+
+#toast.sucesso {
+  background: rgba(12, 12, 22, 0.93);
+  border-left-color: var(--cor-sucesso);
+}
+
+#toast.erro {
+  background: rgba(12, 12, 22, 0.93);
+  border-left-color: var(--cor-perigo);
+}
+
+/* --- Área de upload: hover com glow --- */
+#area-upload {
+  background: linear-gradient(135deg,
+    rgba(108,99,255,0.02) 0%,
+    rgba(168,85,247,0.02) 100%);
+  transition: all 0.25s;
+}
+
+#area-upload:hover,
+#area-upload.dragover {
+  border-color: var(--cor-ativo);
+  background: linear-gradient(135deg,
+    rgba(108,99,255,0.07) 0%,
+    rgba(168,85,247,0.05) 100%);
+  box-shadow: 0 0 0 4px rgba(108,99,255,0.07),
+              inset 0 0 24px rgba(108,99,255,0.04);
+}
+
+/* --- Barra de filtro: glass effect --- */
+.barra-filtro {
+  background: rgba(108,99,255,0.03);
+  border-color: rgba(108,99,255,0.1);
+}
+
+/* --- Tabela: faixas alternadas sutis --- */
+.tabela-gastos tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.013);
+}
+
+/* --- Onboarding: tipografia mais forte --- */
+#tela-onboarding svg { opacity: 0.15; }
+
+#tela-onboarding h2 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(130deg, var(--cor-texto) 0%, rgba(180,170,255,0.75) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- Estado vazio: mais legível --- */
+.estado-vazio svg { opacity: 0.18; }
+.estado-vazio .titulo-vazio {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* --- Btn-secundário: ghost refinado --- */
+.btn-secundario {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  letter-spacing: 0.01em;
+}
+
+.btn-secundario:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.18);
+}
+
+body.tema-claro .btn-secundario {
+  background: rgba(108,99,255,0.04);
+  border-color: rgba(108,99,255,0.18);
+}
+
+body.tema-claro .btn-secundario:hover {
+  background: rgba(108,99,255,0.1);
+  border-color: rgba(108,99,255,0.3);
+}
+
+/* --- Badge de categoria: mais refinado --- */
+.badge-categoria {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 3px 9px 3px 7px;
+}
+
+/* --- Legenda do gráfico: nome com peso tipográfico --- */
+.item-legenda {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.item-legenda .valor-legenda {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* --- Toggle de tema claro: mais polido --- */
+body.tema-claro #btn-tema {
+  background: rgba(108,99,255,0.08);
+  border-color: rgba(108,99,255,0.25);
+}
+
+/* --- Vs badge comparação de meses --- */
+.comparar-vs-badge {
+  background: linear-gradient(135deg, var(--cor-ativo), #7c3aed);
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  box-shadow: 0 2px 10px rgba(108,99,255,0.35);
+}
+
+/* --- Form label: mais caractere --- */
+.form-grupo label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cor-texto-suave);
+}
+
+/* --- Selecionar mes comparar: pill igual ao dashboard --- */
+.seletor-mes-comparar {
+  background: rgba(108,99,255,0.06);
+  border-color: rgba(108,99,255,0.15);
+}
+
+.seletor-mes-comparar:focus-within {
+  border-color: var(--cor-ativo);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+}
+
+/* --- Animação modal de entrada mais suave --- */
+@keyframes modalEntrada {
+  from { opacity: 0; margin-top: -20px; }
+  to   { opacity: 1; margin-top: 0; }
+}
+
+/* --- Nome categoria: peso tipográfico --- */
+.nome-categoria {
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+}
+
+/* ===================================================
+   MELHORIAS — TERCEIRA RODADA
+   Busca Global · Comparar Meses · Resumo Anual
+   =================================================== */
+
+/* --- BUSCA GLOBAL: input principal --- */
+#inp-busca-global {
+  width: 100%;
+  padding: 16px 20px 16px 50px;
+  border: 1.5px solid rgba(108,99,255,0.18);
+  border-radius: 14px;
+  background: var(--cor-fundo);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 16px center;
+  color: var(--cor-texto);
+  font-size: 16px;
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 500;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.22s, box-shadow 0.22s, background-color 0.22s;
+}
+
+#inp-busca-global:focus {
+  border-color: var(--cor-ativo);
+  box-shadow: 0 0 0 4px rgba(108,99,255,0.13), 0 4px 24px rgba(108,99,255,0.1);
+  background-color: var(--cor-card);
+}
+
+#inp-busca-global::placeholder {
+  color: var(--cor-texto-suave);
+  font-weight: 400;
+  font-size: 15px;
+}
+
+/* Card da busca: mais espaçamento */
+div.card:has(#inp-busca-global) {
+  padding: 20px;
+}
+
+/* --- BUSCA GLOBAL: grupos de resultado por mês --- */
+.busca-grupo {
+  margin-bottom: 28px;
+}
+
+.busca-grupo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+
+.busca-mes-titulo {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--cor-texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+}
+
+.busca-mes-titulo::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cor-ativo);
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(108,99,255,0.6);
+}
+
+.busca-mes-resumo {
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+  font-weight: 500;
+}
+
+/* Card de resultados: sem padding, borda mais suave */
+.busca-resultado-card {
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(108,99,255,0.1);
+}
+
+/* --- BUSCA GLOBAL: badges de tipo --- */
+.busca-tipo-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-right: 5px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.busca-tipo-gasto {
+  background: rgba(240,79,90,0.12);
+  color: var(--cor-perigo);
+  border: 1px solid rgba(240,79,90,0.2);
+}
+
+.busca-tipo-receita {
+  background: rgba(46,204,138,0.12);
+  color: var(--cor-sucesso);
+  border: 1px solid rgba(46,204,138,0.25);
+}
+
+/* --- BUSCA GLOBAL: sumário de resultados --- */
+.busca-sumario {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--cor-texto-suave);
+  margin-bottom: 24px;
+  padding: 12px 18px;
+  background: rgba(108,99,255,0.05);
+  border: 1px solid rgba(108,99,255,0.1);
+  border-radius: 10px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.busca-sumario strong {
+  color: var(--cor-texto);
+  font-weight: 700;
+}
+
+/* --- COMPARAR MESES: cards comparativos --- */
+.card-comparativo {
+  text-align: center;
+  padding: 24px !important;
+  transition: transform 0.18s, box-shadow 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-comparativo::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(108,99,255,0.4), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.card-comparativo:hover::after { opacity: 1; }
+
+.card-comparativo:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.4);
+}
+
+/* --- RANKING: itens top-5 --- */
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--cor-borda);
+  transition: background 0.15s, padding 0.15s;
+}
+
+.rank-item:last-child { border-bottom: none; }
+
+.rank-item:hover {
+  background: rgba(108,99,255,0.04);
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 0 -8px;
+  border-radius: 8px;
+}
+
+.rank-numero {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cor-texto-suave);
+  min-width: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.rank-item:first-child .rank-numero { color: #f39c12; }
+.rank-item:nth-child(2) .rank-numero { color: var(--cor-texto-suave); opacity: 0.8; }
+.rank-item:nth-child(3) .rank-numero { color: var(--cor-texto-suave); opacity: 0.65; }
+
+/* --- RESUMO ANUAL: seletor de ano --- */
+#sel-ano-resumo {
+  border-radius: 20px;
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  padding: 7px 16px;
+  border: 1px solid rgba(108,99,255,0.2);
+  background: var(--cor-card);
+  color: var(--cor-texto);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+#sel-ano-resumo:focus { border-color: var(--cor-ativo); }
+
+/* Card headings em secções dinâmicas */
+.card > h2 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* --- Badge de variação refinado --- */
+.badge-variacao {
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.badge-variacao.alta  { background: rgba(240,79,90,0.14); }
+.badge-variacao.baixa { background: rgba(46,204,138,0.14); }
+
+/* --- Painel de filtros da busca: glass --- */
+#painel-filtros-busca {
+  border-top-color: rgba(108,99,255,0.1);
+  margin-top: 16px;
+}
+
+#painel-filtros-busca select,
+#painel-filtros-busca input[type="number"] {
+  border-radius: 10px;
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 500;
+}
+
+#painel-filtros-busca select:focus,
+#painel-filtros-busca input:focus {
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+}
+
+/* --- Btn limpar busca: accent vermelho no hover --- */
+#btn-limpar-busca {
+  border-radius: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* --- Highlight do termo buscado: gradiente --- */
+mark {
+  background: linear-gradient(135deg, var(--cor-ativo), #a855f7) !important;
+  color: #fff !important;
+  border-radius: 3px !important;
+  padding: 0 3px !important;
+}
+
+/* --- Btn-acao nos resultados da busca: mais compacto --- */
+#resultados-busca .btn-acao {
+  font-size: 11.5px;
+  padding: 3px 8px;
+}
+
+/* --- Extrato anual: row ativo se tem dados --- */
+#secao-resumo .tabela-gastos tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.012);
+}
+
+/* --- Comparar: label dos blocos de seleção --- */
+.seletor-mes-comparar-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* --- Import CSV: tab buttons de tipo --- */
+#secao-importar > div:first-of-type .btn {
+  border-radius: 20px;
+  font-size: 13px;
+  padding: 8px 18px;
+}
+
+/* ===================================================
+   MELHORIAS — QUARTA RODADA
+   Modal · Comparar Meses · Ranking · Form
+   =================================================== */
+
+/* --- MODAL: overlay com blur --- */
+#overlay-modal.visivel {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.55);
+}
+
+/* --- MODAL: h2 editorial com separador --- */
+#modal h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--cor-borda);
+  margin-bottom: 22px;
+  line-height: 1.2;
+}
+
+/* --- MODAL: botão fechar com rotação no hover --- */
+#btn-fechar-modal {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--cor-texto-suave);
+  transition: background 0.18s, color 0.18s, transform 0.25s;
+}
+
+#btn-fechar-modal:hover {
+  background: rgba(240,79,90,0.1);
+  color: var(--cor-perigo);
+  transform: rotate(90deg);
+}
+
+/* --- MODAL: parágrafo descritivo (confirmarModal) --- */
+.modal-descricao {
+  margin: 14px 0 20px;
+  line-height: 1.65;
+  color: var(--cor-texto-suave);
+  font-size: 14px;
+}
+
+/* --- MODAL: rodapé de ações --- */
+.modal-acoes {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--cor-borda);
+}
+
+/* --- MODAL: ações recorrentes (3 botões) --- */
+.modal-acoes-recorrente {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--cor-borda);
+}
+.modal-acoes-recorrente .btn-cancelar-rec {
+  margin-right: auto;
+}
+.modal-recorrente-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+  background: color-mix(in srgb, var(--cor-aviso) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cor-aviso) 30%, transparent);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
+/* --- MODAL: sugestão de categoria --- */
+.sugestao-cat {
+  font-size: 12px;
+  color: var(--cor-texto-suave);
+  margin-top: 6px;
+  min-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* --- MODAL: row categoria + nova --- */
+.campo-categoria-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-nova-cat {
+  padding: 9px 14px;
+  white-space: nowrap;
+  font-size: 13px;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+
+/* --- FORM: inputs com Urbanist e transição de fundo --- */
+.form-grupo input,
+.form-grupo select,
+.form-grupo textarea {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 500;
+}
+
+.form-grupo input:focus,
+.form-grupo select:focus,
+.form-grupo textarea:focus {
+  background-color: var(--cor-card);
+}
+
+/* --- FORM: data input --- */
+.form-grupo input[type="date"] {
+  color-scheme: dark;
+}
+body.tema-claro .form-grupo input[type="date"] {
+  color-scheme: light;
+}
+
+/* --- COMPARAR MESES: card internos --- */
+.comp-rotulo {
+  font-size: 10.5px;
+  color: var(--cor-texto-suave);
+  margin-bottom: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.comp-valores {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 8px;
+}
+
+.comp-coluna {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+}
+
+.comp-label {
+  font-size: 11px;
+  color: var(--cor-texto-suave);
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.comp-valor {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.comp-vs {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--cor-texto-suave);
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: 20px;
+  padding: 5px 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.comp-diff {
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  letter-spacing: -0.01em;
+}
+
+body.tema-claro .comp-diff {
+  background: rgba(0,0,0,0.04);
+}
+
+/* --- RANKING: conteúdo interno das linhas --- */
+.rank-conteudo {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-desc {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.005em;
+}
+
+.rank-data {
+  font-size: 11px;
+  color: var(--cor-texto-suave);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* --- STATUS BTN: tamanho padronizado --- */
+.status-btn {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* --- TOGGLE RECORRENTE: label mais expressivo --- */
+.toggle-texto strong {
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+}
+
+.toggle-texto span {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* --- COR-DOT: ligeiramente maior e arredondado --- */
+.cor-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* --- FAB menu items: mais polido --- */
+.fab-item {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  transition: all 0.2s;
+}
+
+.fab-item:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+/* --- Sidebar: ícone do logo com glow animado --- */
+#logo i[data-lucide="wallet"] {
+  filter: drop-shadow(0 0 8px rgba(108,99,255,0.7));
+  animation: pulso-logo 3s ease-in-out infinite;
+}
+
+@keyframes pulso-logo {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(108,99,255,0.5)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(108,99,255,0.9)); }
+}
+
+/* --- Número do ranking: fonte tabular --- */
+.rank-numero {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* --- Form grupo: textarea com altura mínima --- */
+.form-grupo textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+}
+
+/* --- Select de ano do resumo: pill refinado --- */
+#sel-ano-resumo {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* --- Sel-comparar nos selects de meses --- */
+.sel-comparar {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* --- Btn backup / sidebar: fonte Urbanist --- */
+.btn-backup, .btn-apagar-tudo {
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* --- Valor do card de saldo: números tabulares --- */
+.card-resumo .valor {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
