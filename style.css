@@ -34,8 +34,8 @@ body.tema-claro {
   --cor-ativo-glow: rgba(108,99,255,0.15);
 }
 
-body.tema-claro .tabela-gastos tr:hover td {
-  background: #f4f3fc;
+body.tema-claro .tabela-gastos tbody tr:hover td {
+  background: rgba(108,99,255,0.05);
 }
 
 body.tema-claro .menu-item:not(.ativo) {
@@ -43,7 +43,7 @@ body.tema-claro .menu-item:not(.ativo) {
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Urbanist', 'Segoe UI', system-ui, sans-serif;
   background: var(--cor-fundo);
   color: var(--cor-texto);
   min-height: 100vh;
@@ -112,9 +112,10 @@ body {
 }
 
 .menu-item.ativo {
-  background: var(--cor-ativo);
+  background: linear-gradient(90deg, rgba(108,99,255,0.25) 0%, rgba(108,99,255,0.08) 100%);
   color: #fff;
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--cor-ativo);
 }
 
 .icone {
@@ -576,8 +577,14 @@ td .cat-select-dropdown {
   border-bottom: none;
 }
 
-.tabela-gastos tr:hover td {
-  background: var(--cor-fundo);
+.tabela-gastos tbody tr {
+  transition: background 0.12s;
+}
+.tabela-gastos tbody tr:hover td {
+  background: rgba(108,99,255,0.04);
+}
+.tabela-gastos tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--cor-ativo);
 }
 
 .badge-categoria {
@@ -1137,17 +1144,34 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ===== Status pago/pendente ===== */
 .badge-status {
-  padding: 3px 10px;
+  padding: 3px 10px 3px 8px;
   border-radius: 20px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border: none;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
   white-space: nowrap;
 }
+.badge-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.badge-status.pago::before   { background: var(--cor-sucesso); }
+.badge-status.pendente::before { background: #f39c12; }
 
-.badge-status:hover { opacity: 0.8; }
+.badge-status:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+}
 
 .badge-status.pago {
   background: rgba(46,204,138,0.15);
@@ -1736,6 +1760,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
+  pointer-events: none;
+}
+
+#fab-btn, #fab-menu.visivel {
+  pointer-events: auto;
 }
 
 #fab-btn {
@@ -2992,4 +3021,160 @@ body.tema-claro .comp-diff {
 .card-resumo .valor {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* ===== Tabs de Pagamentos ===== */
+.pag-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.pag-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: 50px;
+  border: 1.5px solid var(--cor-borda);
+  background: var(--cor-card);
+  color: var(--cor-texto-suave);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.pag-tab:hover {
+  border-color: currentColor;
+  color: var(--cor-texto);
+}
+
+.pag-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--cor-borda);
+  color: var(--cor-texto-suave);
+  transition: all 0.18s;
+}
+
+.pag-tab-pendente.ativa {
+  background: rgba(243,156,18,0.12);
+  border-color: rgba(243,156,18,0.5);
+  color: #f39c12;
+  box-shadow: 0 0 0 3px rgba(243,156,18,0.1);
+}
+
+.pag-tab-pendente.ativa .pag-tab-count {
+  background: #f39c12;
+  color: #fff;
+}
+
+.pag-tab-pendente:not(.ativa):hover {
+  border-color: rgba(243,156,18,0.35);
+  color: #f39c12;
+}
+
+.pag-tab-pago.ativa {
+  background: rgba(46,204,138,0.1);
+  border-color: rgba(46,204,138,0.45);
+  color: var(--cor-sucesso);
+  box-shadow: 0 0 0 3px rgba(46,204,138,0.08);
+}
+
+.pag-tab-pago.ativa .pag-tab-count {
+  background: var(--cor-sucesso);
+  color: #fff;
+}
+
+.pag-tab-pago:not(.ativa):hover {
+  border-color: rgba(46,204,138,0.3);
+  color: var(--cor-sucesso);
+}
+
+/* ===== Controle de Pagamentos ===== */
+.pag-barra-progresso {
+  padding: 16px 20px;
+  margin-top: 20px;
+  margin-bottom: 24px;
+}
+
+.linha-atrasada {
+  border-left: 3px solid var(--cor-perigo);
+  background: rgba(240,79,90,0.03);
+}
+
+.linha-atrasada:hover td {
+  background: rgba(240,79,90,0.06) !important;
+}
+
+/* ===== Pagamentos: select de mês ===== */
+.pag-select-mes {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--cor-borda);
+  background: var(--cor-card);
+  color: var(--cor-texto);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  min-width: 160px;
+}
+.pag-select-mes:focus { border-color: var(--cor-ativo); }
+
+/* ===== Pagamentos: grupos por mês ===== */
+.pag-grupo-mes {
+  margin-bottom: 8px;
+}
+.pag-grupo-mes:last-child { margin-bottom: 0; }
+
+.pag-grupo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin: 16px -20px 0;
+  background: var(--cor-fundo);
+  border-top: 1px solid var(--cor-borda);
+  border-bottom: 1px solid var(--cor-borda);
+}
+.pag-grupo-mes:first-child .pag-grupo-header {
+  margin-top: 0;
+  border-top: none;
+}
+.pag-grupo-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cor-texto);
+}
+.pag-grupo-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cor-sucesso);
+  background: rgba(46,204,138,0.1);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.btn-pagar-item {
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+}
+
+.btn-despagar-item {
+  opacity: 0.8;
+}
+.btn-despagar-item:hover {
+  opacity: 1;
+  color: var(--cor-texto) !important;
 }

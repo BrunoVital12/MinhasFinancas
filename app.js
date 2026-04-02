@@ -5,7 +5,7 @@ let secaoAtiva = 'dashboard';
 let graficoInstancia = null;
 
 // Estado do filtro da tabela
-let filtro = { texto: '', categoriaId: '', valorMin: '', valorMax: '' };
+let filtro = { texto: '', categoriaId: '', valorMin: '', valorMax: '', status: '' };
 
 // Estado do filtro de receitas
 let filtroReceitas = { texto: '', valorMin: '', valorMax: '', categoriaId: '' };
@@ -241,6 +241,43 @@ function confirmarModalRecorrente(titulo, mensagem, aoExcluirEste, aoExcluirTodo
   });
 }
 
+function confirmarModalEdicaoRecorrente(titulo, mensagem, aoSalvarEste, aoSalvarTodos) {
+  const overlay = document.getElementById('overlay-modal');
+  const modal = document.getElementById('modal');
+  const htmlAnterior = modal.innerHTML;
+  const visivel = overlay.classList.contains('visivel');
+
+  modal.innerHTML = `
+    <h2>${titulo}</h2>
+    <p class="modal-descricao">${mensagem}</p>
+    <div class="modal-recorrente-info">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Este é um item recorrente. Escolha como aplicar as alterações.
+    </div>
+    <div class="modal-acoes-recorrente">
+      <button id="btn-rec-cancelar" class="btn btn-secundario btn-cancelar-rec">Cancelar</button>
+      <button id="btn-rec-este" class="btn btn-primario" style="opacity:0.85">Só este</button>
+      <button id="btn-rec-todos" class="btn btn-primario">Todos</button>
+    </div>
+  `;
+  overlay.classList.add('visivel');
+
+  document.getElementById('btn-rec-cancelar').addEventListener('click', () => {
+    if (visivel) { modal.innerHTML = htmlAnterior; }
+    else { overlay.classList.remove('visivel'); }
+  });
+
+  document.getElementById('btn-rec-este').addEventListener('click', () => {
+    overlay.classList.remove('visivel');
+    aoSalvarEste();
+  });
+
+  document.getElementById('btn-rec-todos').addEventListener('click', () => {
+    overlay.classList.remove('visivel');
+    aoSalvarTodos();
+  });
+}
+
 // ===== Persistência =====
 
 function carregarCategorias() {
@@ -314,6 +351,7 @@ function renderizarSecao(secao) {
     resumo:     renderizarResumoAnual,
     busca:      renderizarBuscaGlobal,
     comparar:   renderizarCompararMeses,
+    pagamentos: renderizarControlePagamentos,
   };
   if (mapa[secao]) mapa[secao]();
 }
@@ -453,7 +491,7 @@ function projetarGastosRecorrentes() {
 // ===== Filtros =====
 
 function temFiltroAtivo() {
-  return filtro.texto || filtro.categoriaId || filtro.valorMin || filtro.valorMax;
+  return filtro.texto || filtro.categoriaId || filtro.valorMin || filtro.valorMax || filtro.status;
 }
 
 function aplicarFiltros(gastos) {
@@ -462,12 +500,13 @@ function aplicarFiltros(gastos) {
     if (filtro.categoriaId && g.categoriaId !== filtro.categoriaId) return false;
     if (filtro.valorMin !== '' && g.valor < parseFloat(filtro.valorMin)) return false;
     if (filtro.valorMax !== '' && g.valor > parseFloat(filtro.valorMax)) return false;
+    if (filtro.status && g.status !== filtro.status) return false;
     return true;
   });
 }
 
 function limparFiltros() {
-  filtro = { texto: '', categoriaId: '', valorMin: '', valorMax: '' };
+  filtro = { texto: '', categoriaId: '', valorMin: '', valorMax: '', status: '' };
   renderizarDashboard();
 }
 
@@ -815,8 +854,6 @@ function renderizarDashboard() {
     filtro.valorMax = e.target.value;
     atualizarTabela();
   });
-  const btnLimpar = secao.querySelector('#btn-limpar-filtro');
-  if (btnLimpar) btnLimpar.addEventListener('click', limparFiltros);
 
   // Exportar CSV de receitas
   secao.querySelector('#btn-exportar-csv-receitas').addEventListener('click', () => {
@@ -873,25 +910,21 @@ function atualizarTabela() {
   const info = secao.querySelector('#info-filtro');
   if (info) info.textContent = temFiltroAtivo() ? `${gastosFiltrados.length} de ${gastos.length} gastos` : '';
 
-  // Mostra/esconde botão limpar
-  const container = secao.querySelector('#barra-filtro');
-  let btnLimpar = secao.querySelector('#btn-limpar-filtro');
-  if (temFiltroAtivo() && !btnLimpar) {
-    btnLimpar = document.createElement('button');
-    btnLimpar.id = 'btn-limpar-filtro';
-    btnLimpar.className = 'btn-limpar-filtro';
-    btnLimpar.textContent = '✕ Limpar';
-    btnLimpar.addEventListener('click', limparFiltros);
-    container.appendChild(btnLimpar);
-  } else if (!temFiltroAtivo() && btnLimpar) {
-    btnLimpar.remove();
-  }
+  // Preserva checkboxes marcados antes de recriar a tabela
+  const idsMarcados = new Set(
+    [...secao.querySelectorAll('.chk-gasto:checked')].map(c => c.dataset.id)
+  );
 
   // Substitui só o conteúdo da tabela
   const tabelaContainer = secao.querySelector('#container-tabela');
   if (tabelaContainer) {
     tabelaContainer.innerHTML = renderizarTabelaGastos(gastosFiltrados, categorias);
     registrarEventosTabela(tabelaContainer);
+    // Restaura checkboxes marcados
+    tabelaContainer.querySelectorAll('.chk-gasto').forEach(chk => {
+      if (idsMarcados.has(chk.dataset.id)) chk.checked = true;
+    });
+    atualizarBotaoExclusao();
   }
 }
 
@@ -938,6 +971,13 @@ function registrarEventosTabela(container) {
       else { ordenacaoGastos.col = col; ordenacaoGastos.dir = 'desc'; }
       atualizarTabela();
     });
+  });
+  const thStatus = container.querySelector('#th-status-filtro');
+  if (thStatus) thStatus.addEventListener('click', () => {
+    if (filtro.status === '') filtro.status = 'pago';
+    else if (filtro.status === 'pago') filtro.status = 'pendente';
+    else filtro.status = '';
+    atualizarTabela();
   });
   container.querySelectorAll('[data-editar]').forEach(btn =>
     btn.addEventListener('click', () => abrirModalEdicao(btn.dataset.editar)));
@@ -987,7 +1027,7 @@ function excluirSelecionados() {
 }
 
 function renderizarTabelaGastos(gastos, categorias) {
-  if (!gastos.length) {
+  if (!gastos.length && !temFiltroAtivo()) {
     return `
       <div class="estado-vazio">
         <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1039,6 +1079,7 @@ function renderizarTabelaGastos(gastos, categorias) {
     `;
   }).join('');
 
+  const semResultados = !linhas;
   return `
     <table class="tabela-gastos">
       <thead>
@@ -1048,12 +1089,13 @@ function renderizarTabelaGastos(gastos, categorias) {
           <th class="th-sort ${ordenacaoGastos.col==='descricao'?'ativa':''}" data-sort-gastos="descricao">Descrição <span class="th-sort-icone">${ordenacaoGastos.col==='descricao'?(ordenacaoGastos.dir==='asc'?'↑':'↓'):'↕'}</span></th>
           <th>Categoria</th>
           <th class="th-sort ${ordenacaoGastos.col==='valor'?'ativa':''}" data-sort-gastos="valor">Valor <span class="th-sort-icone">${ordenacaoGastos.col==='valor'?(ordenacaoGastos.dir==='asc'?'↑':'↓'):'↕'}</span></th>
-          <th>Status</th>
+          <th class="th-sort th-filtro-status${filtro.status ? ' ativa' : ''}" id="th-status-filtro" title="Filtrar por status">Status <span class="th-sort-icone">${filtro.status === 'pago' ? '✓' : filtro.status === 'pendente' ? '⏳' : '↕'}</span></th>
           <th></th>
         </tr>
       </thead>
       <tbody>${linhas}</tbody>
     </table>
+    ${semResultados ? `<p style="text-align:center;padding:24px 0;color:var(--cor-texto-suave);font-size:13px">Nenhum gasto corresponde ao filtro aplicado</p>` : ''}
   `;
 }
 
@@ -1675,11 +1717,66 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
 
   document.getElementById('form-modal-gasto').addEventListener('submit', e => {
     e.preventDefault();
-    salvarGastoDoForm(idExistente, () => {
-      overlay.classList.remove('visivel');
-      renderizarDashboard();
-      if (aoSalvarExtra) aoSalvarExtra();
-    });
+
+    if (isEdicao && gasto.recorrente) {
+      // Lê e valida os campos antes de perguntar
+      const valor = parseFloat(document.getElementById('inp-valor').value);
+      const data = document.getElementById('inp-data').value;
+      const descricao = document.getElementById('inp-descricao').value.trim();
+      const categoriaId = document.getElementById('inp-categoria').value;
+      const recorrente = document.getElementById('inp-recorrente').checked;
+      const status = document.getElementById('inp-status').value;
+      const obsEl = document.getElementById('inp-obs');
+      const obs = obsEl ? obsEl.value.trim() : '';
+
+      if (!valor || valor <= 0) { mostrarToast('Valor inválido.', 'erro'); return; }
+      if (!data) { mostrarToast('Data inválida.', 'erro'); return; }
+      if (!descricao) { mostrarToast('Descrição obrigatória.', 'erro'); return; }
+      if (!categoriaId) { mostrarToast('Selecione uma categoria.', 'erro'); return; }
+
+      const aoFinalizar = (msg) => {
+        overlay.classList.remove('visivel');
+        mostrarToast(msg, 'sucesso');
+        renderizarDashboard();
+        if (aoSalvarExtra) aoSalvarExtra();
+      };
+
+      confirmarModalEdicaoRecorrente(
+        'Editar gasto recorrente',
+        'Deseja aplicar as alterações só neste lançamento ou em todos os recorrentes com a mesma descrição?',
+        () => {
+          // Só este
+          const gastos = carregarGastos();
+          const idx = gastos.findIndex(g => g.id === idExistente);
+          if (idx !== -1) gastos[idx] = { id: idExistente, data, descricao, valor, categoriaId, recorrente, status, obs: obs || undefined };
+          salvarGastos(gastos);
+          aoFinalizar('Gasto atualizado!');
+        },
+        () => {
+          // Todos os recorrentes com mesma descrição original
+          const gastos = carregarGastos();
+          const descOriginal = gasto.descricao;
+          let count = 0;
+          gastos.forEach((g, i) => {
+            if (g.recorrente && g.descricao === descOriginal) {
+              gastos[i] = { ...g, descricao, valor, categoriaId, recorrente, status, obs: obs || undefined };
+              count++;
+            }
+          });
+          // Este específico também recebe a data
+          const thisIdx = gastos.findIndex(g => g.id === idExistente);
+          if (thisIdx !== -1) gastos[thisIdx] = { ...gastos[thisIdx], data };
+          salvarGastos(gastos);
+          aoFinalizar(`${count} gasto(s) atualizado(s)!`);
+        }
+      );
+    } else {
+      salvarGastoDoForm(idExistente, () => {
+        overlay.classList.remove('visivel');
+        renderizarDashboard();
+        if (aoSalvarExtra) aoSalvarExtra();
+      });
+    }
   });
 }
 
@@ -2299,17 +2396,50 @@ function abrirModalReceita(id = null, catIdPreselect = null) {
     if (!data) { mostrarToast('Data inválida.', 'erro'); return; }
     if (!descricao) { mostrarToast('Descrição obrigatória.', 'erro'); return; }
 
-    const todas = carregarReceitas();
-    if (receita) {
-      const idx = todas.findIndex(r => r.id === id);
-      todas[idx] = { ...todas[idx], valor, data, descricao, recorrente, categoriaId };
+    const salvarEFechar = (msg) => {
+      overlay.classList.remove('visivel');
+      mostrarToast(msg, 'sucesso');
+      renderizarDashboard();
+    };
+
+    if (receita && receita.recorrente) {
+      confirmarModalEdicaoRecorrente(
+        'Editar receita recorrente',
+        'Deseja aplicar as alterações só nesta ocorrência ou em todas as recorrentes com a mesma descrição?',
+        () => {
+          const todas = carregarReceitas();
+          const idx = todas.findIndex(r => r.id === id);
+          if (idx !== -1) todas[idx] = { ...todas[idx], valor, data, descricao, recorrente, categoriaId };
+          salvarReceitas(todas);
+          salvarEFechar('Receita atualizada.');
+        },
+        () => {
+          const todas = carregarReceitas();
+          const descOriginal = receita.descricao;
+          let count = 0;
+          todas.forEach((r, i) => {
+            if (r.recorrente && r.descricao === descOriginal) {
+              todas[i] = { ...r, descricao, valor, recorrente, categoriaId };
+              count++;
+            }
+          });
+          const thisIdx = todas.findIndex(r => r.id === id);
+          if (thisIdx !== -1) todas[thisIdx] = { ...todas[thisIdx], data };
+          salvarReceitas(todas);
+          salvarEFechar(`${count} receita(s) atualizada(s)!`);
+        }
+      );
     } else {
-      todas.push({ id: gerarId(), valor, data, descricao, recorrente, categoriaId });
+      const todas = carregarReceitas();
+      if (receita) {
+        const idx = todas.findIndex(r => r.id === id);
+        todas[idx] = { ...todas[idx], valor, data, descricao, recorrente, categoriaId };
+      } else {
+        todas.push({ id: gerarId(), valor, data, descricao, recorrente, categoriaId });
+      }
+      salvarReceitas(todas);
+      salvarEFechar(receita ? 'Receita atualizada.' : 'Receita adicionada.');
     }
-    salvarReceitas(todas);
-    overlay.classList.remove('visivel');
-    mostrarToast(receita ? 'Receita atualizada.' : 'Receita adicionada.', 'sucesso');
-    renderizarDashboard();
   });
 }
 
@@ -3663,6 +3793,7 @@ function renderizarResumoAnual() {
         </table>
       </div>
     </div>
+
   `;
 
   // Evento seletor de ano
@@ -4423,6 +4554,347 @@ function inicializar() {
     overlay.innerHTML = '<div id="modal"></div>';
     document.body.appendChild(overlay);
   }
+}
+
+let abaAtivaPagamentos = 'pendentes'; // 'pendentes' | 'pagos'
+let filtroPagamentos = { textoPendentes: '', mesPagos: '', textoPagos: '' };
+
+function renderizarControlePagamentos() {
+  projetarGastosRecorrentes();
+  const secao = document.getElementById('secao-pagamentos');
+  const todos = carregarGastos();
+  const categorias = carregarCategorias();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const hojeStr = hoje.toISOString().split('T')[0];
+
+  const pendentes = todos.filter(g => g.status === 'pendente');
+  const emAtraso = pendentes.filter(g => g.data < hojeStr).sort((a, b) => a.data.localeCompare(b.data));
+  const futuros = pendentes.filter(g => g.data >= hojeStr).sort((a, b) => a.data.localeCompare(b.data));
+  const pagos = todos.filter(g => g.status === 'pago').sort((a, b) => b.data.localeCompare(a.data));
+
+  const totalPendente = pendentes.reduce((s, g) => s + g.valor, 0);
+  const totalAtraso = emAtraso.reduce((s, g) => s + g.valor, 0);
+  const proximoItem = futuros[0] || null;
+  const totalPago = pagos.reduce((s, g) => s + g.valor, 0);
+  const totalGeral = totalPago + totalPendente;
+  const progressoPct = totalGeral > 0 ? Math.round((totalPago / totalGeral) * 100) : 0;
+
+  const mesStr = `${anoAtual}-${String(mesAtual + 1).padStart(2, '0')}`;
+  const pendentesMes = pendentes.filter(g => g.data.startsWith(mesStr));
+  const totalMes = pendentesMes.reduce((s, g) => s + g.valor, 0);
+
+  const ICONE_EDITAR = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+
+  function htmlLinhaPendente(g) {
+    const cat = categorias.find(c => c.id === g.categoriaId);
+    const atrasado = g.data < hojeStr;
+    const diasDiff = Math.round((new Date(g.data + 'T00:00:00') - hoje) / 86400000);
+    let labelData = '';
+    if (atrasado) {
+      const d = Math.abs(diasDiff);
+      labelData = `<span style="font-size:10px;color:var(--cor-perigo);font-weight:700;margin-left:4px">${d}d em atraso</span>`;
+    } else if (diasDiff === 0) {
+      labelData = `<span style="font-size:10px;color:#f39c12;font-weight:700;margin-left:4px">Hoje!</span>`;
+    } else if (diasDiff <= 7) {
+      labelData = `<span style="font-size:10px;color:#f39c12;font-weight:600;margin-left:4px">em ${diasDiff}d</span>`;
+    }
+    return `
+      <tr class="${atrasado ? 'linha-atrasada' : 'linha-pendente'}">
+        <td style="white-space:nowrap">${formatarData(g.data)}${labelData}</td>
+        <td>
+          ${g.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${g.descricao}
+          ${g.obs ? `<div style="font-size:11px;color:var(--cor-texto-suave);margin-top:2px">${g.obs}</div>` : ''}
+        </td>
+        <td>${cat ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:${cat.cor};flex-shrink:0"></span>${cat.nome}</span>` : '<span style="color:var(--cor-texto-suave);font-size:12px">—</span>'}</td>
+        <td style="text-align:right;font-weight:700;color:var(--cor-perigo);white-space:nowrap">${formatarMoeda(g.valor)}</td>
+        <td style="white-space:nowrap">
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <button onclick="editarGastoPag('${g.id}')" class="btn btn-secundario" style="padding:5px 10px;font-size:12px" title="Editar">${ICONE_EDITAR}</button>
+            <button onclick="pagarGastoPag('${g.id}')" class="btn btn-sucesso" style="padding:5px 12px;font-size:12px;white-space:nowrap">✓ Pagar</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function htmlLinhaPago(g) {
+    const cat = categorias.find(c => c.id === g.categoriaId);
+    return `
+      <tr>
+        <td style="white-space:nowrap">${formatarData(g.data)}</td>
+        <td>
+          ${g.recorrente ? `<span title="Recorrente">${ICONES.recorrente}</span>` : ''}${g.descricao}
+          ${g.obs ? `<div style="font-size:11px;color:var(--cor-texto-suave);margin-top:2px">${g.obs}</div>` : ''}
+        </td>
+        <td>${cat ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:${cat.cor};flex-shrink:0"></span>${cat.nome}</span>` : '<span style="color:var(--cor-texto-suave);font-size:12px">—</span>'}</td>
+        <td style="text-align:right;font-weight:700;color:var(--cor-sucesso);white-space:nowrap">${formatarMoeda(g.valor)}</td>
+        <td style="white-space:nowrap">
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <button onclick="editarGastoPag('${g.id}')" class="btn btn-secundario" style="padding:5px 10px;font-size:12px" title="Editar">${ICONE_EDITAR}</button>
+            <button onclick="despagar('${g.id}')" class="btn btn-secundario" style="padding:5px 12px;font-size:12px;white-space:nowrap;color:var(--cor-texto-suave)">↩ Pendente</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  // --- Pendentes filtrados por texto ---
+  const textoP = filtroPagamentos.textoPendentes.toLowerCase();
+  const emAtrasoFilt = textoP ? emAtraso.filter(g => g.descricao.toLowerCase().includes(textoP)) : emAtraso;
+  const futurosFilt  = textoP ? futuros.filter(g => g.descricao.toLowerCase().includes(textoP)) : futuros;
+
+  const conteudoPendentes = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+      <div class="card-resumo acento-vermelho">
+        <span class="rotulo">Total pendente</span>
+        <span class="valor" style="color:var(--cor-perigo)">${formatarMoeda(totalPendente)}</span>
+        <span class="sub">${pendentes.length} lançamento(s)</span>
+      </div>
+      <div class="card-resumo" style="border-left:3px solid #e74c3c">
+        <span class="rotulo">Em atraso</span>
+        <span class="valor" style="color:#e74c3c">${formatarMoeda(totalAtraso)}</span>
+        <span class="sub">${emAtraso.length} lançamento(s)</span>
+      </div>
+      <div class="card-resumo acento-amarelo">
+        <span class="rotulo">Pendente este mês</span>
+        <span class="valor" style="color:#f39c12">${formatarMoeda(totalMes)}</span>
+        <span class="sub">${pendentesMes.length} lançamento(s)</span>
+      </div>
+      <div class="card-resumo acento-azul">
+        <span class="rotulo">Próximo vencimento</span>
+        <span class="valor" style="font-size:14px;font-weight:600">${proximoItem ? proximoItem.descricao : '—'}</span>
+        <span class="sub">${proximoItem ? formatarData(proximoItem.data) + ' · ' + formatarMoeda(proximoItem.valor) : 'Nenhum pendente'}</span>
+      </div>
+    </div>
+
+    <div class="barra-filtro" style="margin-bottom:20px">
+      <input type="text" id="pag-busca-pendentes" placeholder="Buscar pendente..." value="${filtroPagamentos.textoPendentes}" style="flex:1;min-width:160px" />
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cor-perigo)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Em atraso
+        </h2>
+        ${emAtrasoFilt.length ? `<span style="font-size:13px;font-weight:700;color:var(--cor-perigo)">${formatarMoeda(emAtrasoFilt.reduce((s,g)=>s+g.valor,0))}</span>` : ''}
+      </div>
+      ${emAtrasoFilt.length ? `
+        <table class="tabela-gastos">
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+          <tbody>${emAtrasoFilt.map(htmlLinhaPendente).join('')}</tbody>
+        </table>
+      ` : `<p class="sem-gastos">${textoP ? 'Nenhum resultado para "' + filtroPagamentos.textoPendentes + '"' : 'Nenhum gasto em atraso'}</p>`}
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f39c12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Próximos vencimentos
+        </h2>
+        ${futurosFilt.length ? `<span style="font-size:13px;font-weight:700;color:#f39c12">${formatarMoeda(futurosFilt.reduce((s,g)=>s+g.valor,0))}</span>` : ''}
+      </div>
+      ${futurosFilt.length ? `
+        <table class="tabela-gastos">
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+          <tbody>${futurosFilt.map(htmlLinhaPendente).join('')}</tbody>
+        </table>
+      ` : `<p class="sem-gastos">${textoP ? 'Nenhum resultado para "' + filtroPagamentos.textoPendentes + '"' : 'Nenhum pagamento futuro pendente'}</p>`}
+    </div>
+  `;
+
+  // --- Pagos: filtro por mês e texto ---
+  const mesesComPagos = [...new Set(pagos.map(g => g.data.slice(0, 7)))].sort((a,b) => b.localeCompare(a));
+  const mesFiltPagos = filtroPagamentos.mesPagos;
+  const textoFiltPagos = filtroPagamentos.textoPagos.toLowerCase();
+
+  let pagosFiltrados = pagos;
+  if (mesFiltPagos) pagosFiltrados = pagosFiltrados.filter(g => g.data.startsWith(mesFiltPagos));
+  if (textoFiltPagos) pagosFiltrados = pagosFiltrados.filter(g => g.descricao.toLowerCase().includes(textoFiltPagos));
+
+  const totalPagoFilt = pagosFiltrados.reduce((s,g) => s+g.valor, 0);
+  const mediaPagoFilt = pagosFiltrados.length ? totalPagoFilt / pagosFiltrados.length : 0;
+
+  // Agrupar por mês quando sem filtro de mês
+  function htmlPagosAgrupados(lista) {
+    if (mesFiltPagos || !lista.length) {
+      return lista.length ? `
+        <table class="tabela-gastos">
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+          <tbody>${lista.map(htmlLinhaPago).join('')}</tbody>
+        </table>
+      ` : `<p class="sem-gastos">${textoFiltPagos ? 'Nenhum resultado para "' + filtroPagamentos.textoPagos + '"' : 'Nenhum gasto pago neste mês'}</p>`;
+    }
+    const grupos = {};
+    lista.forEach(g => {
+      const k = g.data.slice(0,7);
+      if (!grupos[k]) grupos[k] = [];
+      grupos[k].push(g);
+    });
+    const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return Object.keys(grupos).sort((a,b) => b.localeCompare(a)).map(k => {
+      const [ano, mes] = k.split('-');
+      const label = `${nomesMeses[parseInt(mes)-1]} ${ano}`;
+      const totalGrupo = grupos[k].reduce((s,g)=>s+g.valor,0);
+      return `
+        <div class="pag-grupo-mes">
+          <div class="pag-grupo-header">
+            <span class="pag-grupo-label">${label}</span>
+            <span class="pag-grupo-total">${formatarMoeda(totalGrupo)} · ${grupos[k].length} item(s)</span>
+          </div>
+          <table class="tabela-gastos">
+            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+            <tbody>${grupos[k].map(htmlLinhaPago).join('')}</tbody>
+          </table>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Label do mês selecionado para cards
+  const nomesMesesCurtos = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const labelMesSel = mesFiltPagos
+    ? `${nomesMesesCurtos[parseInt(mesFiltPagos.slice(5))-1]}/${mesFiltPagos.slice(2,4)}`
+    : 'tudo';
+
+  const conteudoPagos = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:20px">
+      <div class="card-resumo acento-verde">
+        <span class="rotulo">Total pago${mesFiltPagos ? ' · ' + labelMesSel : ''}</span>
+        <span class="valor" style="color:var(--cor-sucesso)">${formatarMoeda(totalPagoFilt)}</span>
+        <span class="sub">${pagosFiltrados.length} lançamento(s)</span>
+      </div>
+      <div class="card-resumo acento-azul">
+        <span class="rotulo">Ticket médio</span>
+        <span class="valor">${pagosFiltrados.length ? formatarMoeda(mediaPagoFilt) : '—'}</span>
+        <span class="sub">por lançamento</span>
+      </div>
+      <div class="card-resumo" style="border-left:3px solid var(--cor-ativo)">
+        <span class="rotulo">Maior pagamento</span>
+        <span class="valor" style="font-size:13px;font-weight:600">${pagosFiltrados.length ? pagosFiltrados.reduce((a,b)=>a.valor>b.valor?a:b).descricao : '—'}</span>
+        <span class="sub">${pagosFiltrados.length ? formatarMoeda(Math.max(...pagosFiltrados.map(g=>g.valor))) : ''}</span>
+      </div>
+    </div>
+
+    <div class="barra-filtro" style="margin-bottom:20px">
+      <input type="text" id="pag-busca-pagos" placeholder="Buscar pago..." value="${filtroPagamentos.textoPagos}" style="flex:1;min-width:140px" />
+      <select id="pag-filtro-mes" class="pag-select-mes">
+        <option value="">Todos os meses</option>
+        ${mesesComPagos.map(m => {
+          const [ano, mes] = m.split('-');
+          const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+          return `<option value="${m}" ${mesFiltPagos === m ? 'selected' : ''}>${nomesMeses[parseInt(mes)-1]} ${ano}</option>`;
+        }).join('')}
+      </select>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${mesFiltPagos ? '16px' : '0'};flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:15px;font-weight:600;margin:0">Histórico de pagamentos</h2>
+        ${mesFiltPagos && pagosFiltrados.length ? `<span style="font-size:13px;font-weight:700;color:var(--cor-sucesso)">${formatarMoeda(totalPagoFilt)}</span>` : ''}
+      </div>
+      ${htmlPagosAgrupados(pagosFiltrados)}
+    </div>
+  `;
+
+  secao.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:6px">
+      <div>
+        <h1 class="titulo-secao" style="margin-bottom:4px">Controle de Pagamentos</h1>
+        <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:0">Acompanhe pagamentos pendentes e realizados</p>
+      </div>
+      ${emAtraso.length > 0 ? `<div style="display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;font-size:13px;background:rgba(240,79,90,0.08);border:1px solid rgba(240,79,90,0.25);color:var(--cor-perigo);font-weight:700">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        ${emAtraso.length} em atraso
+      </div>` : ''}
+    </div>
+
+    <div class="card pag-barra-progresso">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--cor-texto-suave)">Progresso de pagamentos</span>
+        <span style="font-size:14px;font-weight:800;color:${progressoPct === 100 ? 'var(--cor-sucesso)' : 'var(--cor-texto)'}">${progressoPct}%</span>
+      </div>
+      <div style="height:8px;background:var(--cor-borda);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${progressoPct}%;background:linear-gradient(90deg,var(--cor-sucesso),#1abc9c);border-radius:99px;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <span style="font-size:12px;color:var(--cor-sucesso);font-weight:600">${formatarMoeda(totalPago)} pago · ${pagos.length} item(s)</span>
+        <span style="font-size:12px;color:var(--cor-perigo);font-weight:600">${formatarMoeda(totalPendente)} pendente · ${pendentes.length} item(s)</span>
+      </div>
+    </div>
+
+    <div class="pag-tabs" style="margin-bottom:24px">
+      <button class="pag-tab pag-tab-pendente ${abaAtivaPagamentos === 'pendentes' ? 'ativa' : ''}" id="aba-pag-pendentes">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Pendentes
+        ${pendentes.length ? `<span class="pag-tab-count">${pendentes.length}</span>` : ''}
+      </button>
+      <button class="pag-tab pag-tab-pago ${abaAtivaPagamentos === 'pagos' ? 'ativa' : ''}" id="aba-pag-pagos">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Pagos
+        ${pagos.length ? `<span class="pag-tab-count">${pagos.length}</span>` : ''}
+      </button>
+    </div>
+
+    <div id="conteudo-aba-pagamentos">
+      ${abaAtivaPagamentos === 'pendentes' ? conteudoPendentes : conteudoPagos}
+    </div>
+  `;
+
+  secao.querySelector('#aba-pag-pendentes').addEventListener('click', () => {
+    abaAtivaPagamentos = 'pendentes';
+    renderizarControlePagamentos();
+  });
+  secao.querySelector('#aba-pag-pagos').addEventListener('click', () => {
+    abaAtivaPagamentos = 'pagos';
+    renderizarControlePagamentos();
+  });
+
+  const buscaPendentes = secao.querySelector('#pag-busca-pendentes');
+  if (buscaPendentes) buscaPendentes.addEventListener('input', e => {
+    filtroPagamentos.textoPendentes = e.target.value;
+    renderizarControlePagamentos();
+  });
+
+  const buscaPagos = secao.querySelector('#pag-busca-pagos');
+  if (buscaPagos) buscaPagos.addEventListener('input', e => {
+    filtroPagamentos.textoPagos = e.target.value;
+    renderizarControlePagamentos();
+  });
+
+  const selectMes = secao.querySelector('#pag-filtro-mes');
+  if (selectMes) selectMes.addEventListener('change', e => {
+    filtroPagamentos.mesPagos = e.target.value;
+    renderizarControlePagamentos();
+  });
+}
+
+function pagarGastoPag(id) {
+  const gastos = carregarGastos();
+  const idx = gastos.findIndex(g => g.id === id);
+  if (idx === -1) return;
+  gastos[idx].status = 'pago';
+  salvarGastos(gastos);
+  mostrarToast(`"${gastos[idx].descricao}" marcado como pago!`, 'sucesso');
+  renderizarControlePagamentos();
+}
+
+function despagar(id) {
+  const gastos = carregarGastos();
+  const idx = gastos.findIndex(g => g.id === id);
+  if (idx === -1) return;
+  gastos[idx].status = 'pendente';
+  salvarGastos(gastos);
+  mostrarToast(`"${gastos[idx].descricao}" marcado como pendente.`, 'normal');
+  renderizarControlePagamentos();
+}
+
+function editarGastoPag(id) {
+  const gasto = carregarGastos().find(g => g.id === id);
+  if (!gasto) return;
+  abrirModalGasto(gasto, false, () => renderizarControlePagamentos());
 }
 
 document.addEventListener('DOMContentLoaded', inicializar);
