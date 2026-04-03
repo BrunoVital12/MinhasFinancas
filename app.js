@@ -723,9 +723,8 @@ function renderizarDashboard() {
             ${htmlSelectCategoria('filtro-categoria', categorias, filtro.categoriaId, 'Todas as categorias')}
             <input type="number" id="filtro-valor-min" placeholder="Valor mín." value="${filtro.valorMin}" step="0.01" min="0" />
             <input type="number" id="filtro-valor-max" placeholder="Valor máx." value="${filtro.valorMax}" step="0.01" min="0" />
-            ${temFiltroAtivo() ? `<button id="btn-limpar-filtro" class="btn-limpar-filtro">✕ Limpar</button>` : ''}
+            ${temFiltroAtivo() ? `<button id="btn-limpar-filtro" class="btn-limpar-filtro">✕ Limpar</button><span id="info-filtro" style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap">${gastosFiltrados.length} de ${qtd} gastos</span>` : '<span id="info-filtro" style="display:none"></span>'}
           </div>
-          <p id="info-filtro" style="font-size:12px;color:var(--cor-texto-suave);margin-bottom:8px">${temFiltroAtivo() ? `${gastosFiltrados.length} de ${qtd} gastos` : ''}</p>
           <div id="container-tabela">${renderizarTabelaGastos(gastosFiltrados, categorias)}</div>
         </div>
 
@@ -908,7 +907,14 @@ function atualizarTabela() {
 
   // Atualiza contagem
   const info = secao.querySelector('#info-filtro');
-  if (info) info.textContent = temFiltroAtivo() ? `${gastosFiltrados.length} de ${gastos.length} gastos` : '';
+  if (info) {
+    if (temFiltroAtivo()) {
+      info.textContent = `${gastosFiltrados.length} de ${gastos.length} gastos`;
+      info.style.display = '';
+    } else {
+      info.style.display = 'none';
+    }
+  }
 
   // Preserva checkboxes marcados antes de recriar a tabela
   const idsMarcados = new Set(

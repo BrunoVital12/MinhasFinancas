@@ -3178,3 +3178,620 @@ body.tema-claro .comp-diff {
   opacity: 1;
   color: var(--cor-texto) !important;
 }
+
+/* =================================================
+   POLISH FINAL — Syne · Profundidade · Ritmo
+   ================================================= */
+
+/* --- Urbanist 900: display para valores e títulos --- */
+.card-resumo .valor,
+.comp-valor {
+  font-weight: 900;
+}
+
+/* --- Root: variáveis refinadas --- */
+:root {
+  --raio: 14px;
+  --sombra: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.15);
+  --sombra-elevada: 0 8px 40px rgba(0,0,0,0.45), 0 2px 10px rgba(0,0,0,0.2);
+}
+
+/* --- Sidebar: mais profunda e autoritária --- */
+#sidebar {
+  width: 224px;
+  background: linear-gradient(170deg,
+    #04040a 0%,
+    #08081a 45%,
+    #050510 100%);
+  border-right: 1px solid rgba(108,99,255,0.09);
+  box-shadow: 4px 0 32px rgba(0,0,0,0.4);
+}
+#conteudo { margin-left: 224px; }
+
+#logo {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.035);
+  margin-bottom: 10px;
+}
+#logo h1 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(115deg, #fff 0%, rgba(195,188,255,0.88) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.menu-item {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 13px;
+  border-radius: 9px;
+  letter-spacing: 0.008em;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+
+.menu-item.ativo {
+  background: linear-gradient(118deg,
+    rgba(108,99,255,0.24) 0%,
+    rgba(108,99,255,0.07) 100%);
+  border: 1px solid rgba(108,99,255,0.2);
+  box-shadow: 0 2px 12px rgba(108,99,255,0.15),
+              inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.menu-item.ativo::before {
+  background: linear-gradient(180deg, #c4b5fd, #6c63ff);
+  width: 2.5px;
+  height: 52%;
+  border-radius: 0 3px 3px 0;
+}
+
+/* --- Cards: mais dimensionais --- */
+.card {
+  border-radius: 16px;
+  border-color: rgba(255,255,255,0.045);
+  background: linear-gradient(148deg,
+    rgba(26,26,42,1) 0%,
+    rgba(18,18,30,1) 100%);
+  box-shadow: var(--sombra),
+              inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.card-resumo {
+  border-radius: 16px;
+  border-color: rgba(255,255,255,0.045);
+  background: linear-gradient(148deg,
+    rgba(26,26,42,1) 0%,
+    rgba(18,18,30,1) 100%);
+}
+
+/* Tema claro: cards brancos puros */
+body.tema-claro .card {
+  background: #ffffff;
+  border-color: rgba(108,99,255,0.1);
+  box-shadow: 0 2px 12px rgba(108,99,255,0.07), 0 1px 3px rgba(0,0,0,0.05),
+              inset 0 1px 0 rgba(255,255,255,0.8);
+}
+body.tema-claro .card-resumo {
+  background: #ffffff;
+  border-color: rgba(108,99,255,0.1);
+  box-shadow: 0 2px 12px rgba(108,99,255,0.07), 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* --- Card resumo: hierarquia mais clara --- */
+.card-resumo .rotulo {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.card-resumo .valor {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.card-resumo .sub {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Animação staggered de entrada dos cards */
+@keyframes card-surge {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#grid-resumo .card-resumo:nth-child(1) { animation: card-surge 0.35s 0.04s cubic-bezier(0.22,1,0.36,1) both; }
+#grid-resumo .card-resumo:nth-child(2) { animation: card-surge 0.35s 0.09s cubic-bezier(0.22,1,0.36,1) both; }
+#grid-resumo .card-resumo:nth-child(3) { animation: card-surge 0.35s 0.14s cubic-bezier(0.22,1,0.36,1) both; }
+#grid-resumo .card-resumo:nth-child(4) { animation: card-surge 0.35s 0.19s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* --- Título de seção: Syne com kerning preciso --- */
+.titulo-secao {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  border-left-width: 3px;
+}
+
+/* --- Seletor de mês: label Syne --- */
+#seletor-mes {
+  padding: 4px 6px;
+}
+#label-mes {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  min-width: 152px;
+}
+
+/* --- Abas: peso e espaçamento corretos --- */
+.aba-btn {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.aba-btn.ativa {
+  background: rgba(108,99,255,0.09);
+}
+
+/* --- Tabela: mais limpa e legível --- */
+.tabela-gastos {
+  font-size: 13.5px;
+}
+.tabela-gastos th {
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  padding: 10px 12px;
+  font-weight: 700;
+  background: rgba(108,99,255,0.025);
+}
+.tabela-gastos td {
+  padding: 11px 12px;
+}
+.tabela-gastos tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--cor-ativo);
+}
+/* Valores monetários na tabela: tabular */
+.tabela-gastos td strong {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+}
+/* Faixas alternadas mais sutis no dark */
+.tabela-gastos tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.01);
+}
+
+/* --- Linha pendente: acento mais delicado --- */
+.linha-pendente {
+  border-left: none;
+}
+.linha-pendente td:first-child {
+  box-shadow: inset 2px 0 0 rgba(243,156,18,0.55);
+}
+
+/* --- Badge status: mais preciso --- */
+.badge-status {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  padding: 3px 9px 3px 7px;
+  border-radius: 20px;
+}
+
+/* --- Barra de filtro: mais coesa --- */
+.barra-filtro {
+  border-radius: 12px;
+  padding: 10px 12px;
+  gap: 7px;
+}
+.barra-filtro input[type="text"],
+.barra-filtro input[type="number"] {
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+/* --- Botões: hierarquia e raios consistentes --- */
+.btn {
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  transition: all 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.btn-perigo {
+  background: linear-gradient(135deg, #f04f5a 0%, #d93545 100%);
+  box-shadow: 0 2px 10px rgba(240,79,90,0.28);
+}
+.btn-perigo:hover {
+  background: linear-gradient(135deg, #ff6170 0%, #c82f3e 100%);
+  box-shadow: 0 4px 18px rgba(240,79,90,0.45);
+  transform: translateY(-1px);
+}
+
+/* --- FAB: mais presente --- */
+#fab-btn {
+  width: 50px;
+  height: 50px;
+  box-shadow:
+    0 4px 20px rgba(108,99,255,0.48),
+    0 2px 6px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* --- Modal: mais polido --- */
+#modal {
+  border-radius: 18px;
+  border-color: rgba(255,255,255,0.055);
+  box-shadow: var(--sombra-elevada),
+              inset 0 1px 0 rgba(255,255,255,0.05);
+  padding: 28px 30px;
+}
+#modal h2 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+body.tema-claro #modal {
+  border-color: rgba(108,99,255,0.14);
+  box-shadow: 0 20px 64px rgba(108,99,255,0.14), 0 4px 16px rgba(0,0,0,0.07),
+              inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+/* --- Card de gráfico: mais coeso --- */
+#card-grafico {
+  border-radius: 16px;
+  border-color: rgba(255,255,255,0.045);
+}
+body.tema-claro #card-grafico {
+  background: #ffffff;
+  border-color: rgba(108,99,255,0.1);
+}
+
+/* --- Card de lista: mais coeso --- */
+#card-lista {
+  border-radius: 16px;
+  border-color: rgba(255,255,255,0.045);
+}
+body.tema-claro #card-lista {
+  background: #ffffff;
+  border-color: rgba(108,99,255,0.1);
+}
+
+/* --- Items de categoria: mais refinados --- */
+.item-categoria {
+  border-radius: 14px;
+  padding: 14px 18px;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.item-categoria:hover {
+  transform: translateX(4px);
+  background: rgba(108,99,255,0.04);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* --- Scrollbar: mínima e discreta --- */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(108,99,255,0.22);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(108,99,255,0.5);
+}
+
+/* --- Header dashboard refinado --- */
+#secao-dashboard > div:first-child {
+  border-radius: 16px !important;
+  background: linear-gradient(135deg,
+    rgba(108,99,255,0.06) 0%,
+    rgba(108,99,255,0.015) 55%,
+    transparent 100%) !important;
+  border-color: rgba(108,99,255,0.08) !important;
+  padding: 14px 20px !important;
+  margin-bottom: 18px !important;
+}
+
+/* --- Th status ativo: destaque visual claro --- */
+.th-filtro-status.ativa {
+  color: var(--cor-ativo);
+  background: rgba(108,99,255,0.09);
+  border-radius: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* --- Toast: fonte correta --- */
+#toast {
+  font-family: 'Urbanist', sans-serif;
+}
+
+/* --- Tema claro: ajustes de tabela --- */
+body.tema-claro .tabela-gastos th {
+  background: rgba(108,99,255,0.03);
+}
+body.tema-claro .tabela-gastos tbody tr:nth-child(even) td {
+  background: rgba(108,99,255,0.012);
+}
+body.tema-claro .tabela-gastos tbody tr:hover td {
+  background: rgba(108,99,255,0.045);
+}
+
+/* --- Rank número: Syne --- */
+.rank-numero {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+/* --- Amostra de cor de categoria: arredondada --- */
+.amostra-cor {
+  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+}
+
+/* --- Área de upload: mais impactante --- */
+#area-upload {
+  border-radius: 16px;
+  padding: 52px 24px;
+}
+
+/* --- Btn de ação na tabela: mais preciso --- */
+.btn-acao {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 7px;
+  letter-spacing: 0.005em;
+}
+
+/* --- Tag tipo busca global: mais nítido --- */
+.busca-tipo-tag {
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  border-radius: 4px;
+}
+
+/* --- Entrada de seção: mais suave --- */
+@keyframes entrada-secao {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.secao.ativa {
+  animation: entrada-secao 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* =================================================
+   SEXTA RODADA — Tátil · Detalhe · Atmosfera
+   ================================================= */
+
+/* --- Feedback de clique em TODOS os botões --- */
+.btn:active                { transform: scale(0.97) !important; transition-duration: 0.07s !important; }
+.btn-primario:active,
+.btn-sucesso:active,
+.btn-perigo:active         { transform: translateY(1px) scale(0.98) !important; }
+.btn-acao:active           { transform: scale(0.94) !important; transition-duration: 0.05s !important; }
+.btn-add-dash:active       { transform: translateY(1px) scale(0.97) !important; }
+.btn-backup:active         { transform: scale(0.97) !important; transition-duration: 0.07s !important; }
+.pag-tab:active            { transform: scale(0.97) !important; }
+.aba-btn:active            { transform: scale(0.97) !important; }
+.badge-status:active       { transform: scale(0.92) !important; }
+.status-btn:active         { transform: scale(0.95) !important; }
+.menu-item:active          { transform: scale(0.98) !important; transition-duration: 0.07s !important; }
+#fab-btn:active            { transform: scale(0.88) !important; transition-duration: 0.07s !important; }
+.fab-item:active           { transform: translateX(-5px) scale(0.96) !important; }
+.btn-limpar-filtro:active  { transform: scale(0.95) !important; }
+
+/* --- Sidebar inferior: mais discreta e organizada --- */
+.divisor-sidebar {
+  border-top-color: rgba(255,255,255,0.055);
+  margin-bottom: 14px;
+}
+
+.btn-backup {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9px;
+  padding: 8px 12px;
+  letter-spacing: 0.01em;
+  color: rgba(255,255,255,0.4);
+  border-color: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.025);
+}
+.btn-backup:hover {
+  color: rgba(255,255,255,0.88);
+  background: rgba(108,99,255,0.13);
+  border-color: rgba(108,99,255,0.28);
+}
+.btn-backup.btn-restaurar:hover {
+  background: rgba(46,204,138,0.1);
+  border-color: rgba(46,204,138,0.28);
+  color: rgba(255,255,255,0.88);
+}
+
+.btn-apagar-tudo {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 12px;
+  opacity: 0.6;
+  border-radius: 9px;
+  letter-spacing: 0.01em;
+}
+.btn-apagar-tudo:hover { opacity: 1; }
+
+/* --- Onboarding: glow atmosférico e tipografia marcante --- */
+#tela-onboarding {
+  position: relative;
+  overflow: hidden;
+}
+#tela-onboarding::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 55% 35% at 50% 35%, rgba(108,99,255,0.09), transparent 70%);
+  pointer-events: none;
+}
+#tela-onboarding h2 {
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: linear-gradient(128deg, var(--cor-texto) 30%, rgba(175,165,255,0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.onboarding-acoes { margin-top: 18px; gap: 10px; }
+.onboarding-acoes .btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  border-radius: 12px;
+  gap: 8px;
+}
+body.tema-claro #tela-onboarding h2 {
+  background: linear-gradient(128deg, var(--cor-texto) 20%, var(--cor-ativo) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* --- Toggle recorrente: mais expressivo --- */
+.toggle-recorrente {
+  border-radius: 12px;
+  border-color: rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.02);
+}
+.toggle-recorrente:has(.toggle-check:checked) {
+  border-color: rgba(108,99,255,0.32);
+  background: rgba(108,99,255,0.07);
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.06),
+              inset 0 1px 0 rgba(108,99,255,0.15);
+}
+body.tema-claro .toggle-recorrente { border-color: rgba(108,99,255,0.18); background: transparent; }
+body.tema-claro .toggle-recorrente:has(.toggle-check:checked) { background: rgba(108,99,255,0.06); box-shadow: none; }
+
+/* --- Status selector no modal: mais sólido --- */
+.status-btn {
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.status-btn.ativo.pago {
+  box-shadow: 0 0 0 3px rgba(46,204,138,0.12);
+}
+.status-btn.ativo.pendente {
+  box-shadow: 0 0 0 3px rgba(243,156,18,0.12);
+}
+
+/* --- Placeholder: mais sutil --- */
+::placeholder {
+  opacity: 0.45;
+  font-weight: 400;
+}
+.barra-filtro input::placeholder { font-size: 12.5px; }
+
+/* --- Form label: capitalizado e leve --- */
+.form-grupo label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cor-texto-suave);
+}
+
+/* --- Input prefixo R$: centrado e bold --- */
+.input-prefixo > span {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  min-width: 36px;
+  justify-content: center;
+}
+
+/* --- Pag-barra-progresso: card mais rico --- */
+.pag-barra-progresso {
+  padding: 18px 22px;
+  background: linear-gradient(145deg, rgba(26,26,42,1) 0%, rgba(18,18,30,1) 100%);
+  border-color: rgba(255,255,255,0.045);
+}
+body.tema-claro .pag-barra-progresso {
+  background: #fff;
+  border-color: rgba(108,99,255,0.1);
+}
+
+/* --- Th sort: ícone mais limpo --- */
+.th-sort-icone {
+  font-size: 9px;
+  opacity: 0.35;
+  margin-left: 3px;
+}
+.th-sort.ativa .th-sort-icone { opacity: 0.95; }
+
+/* --- Cat-select trigger: bordas e foco harmonizados --- */
+.cat-select-trigger {
+  border-radius: 9px;
+}
+.cat-select-wrapper.aberto .cat-select-trigger {
+  box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+}
+
+/* --- Área de upload: ícone colorido --- */
+#area-upload .icone-upload {
+  color: var(--cor-ativo);
+  opacity: 0.65;
+}
+
+/* --- Legenda gráfico: hover sutil --- */
+.item-legenda {
+  cursor: default;
+  transition: opacity 0.15s;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+}
+.item-legenda:hover { opacity: 0.82; }
+
+/* --- Btn-nova-cat: consistente --- */
+.btn-nova-cat { border-radius: 10px; }
+
+/* --- Sugestão de categoria: mais visível --- */
+.sugestao-cat { letter-spacing: 0.01em; }
+
+/* --- Progress bar: shimmer na barra de progresso --- */
+@keyframes shimmer-progress {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* --- Scrollbar: trilha levemente visível --- */
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.015);
+  border-radius: 4px;
+}
+body.tema-claro ::-webkit-scrollbar-track {
+  background: rgba(108,99,255,0.04);
+}
+
+/* --- Tema claro: sidebar continua escura (por design) --- */
+body.tema-claro #sidebar {
+  background: linear-gradient(170deg, #06061a 0%, #0a0a20 50%, #060616 100%);
+}
+
+/* --- Focus visible global: anel roxo coerente --- */
+:focus-visible {
+  outline: 2px solid rgba(108,99,255,0.55);
+  outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible { outline: none; }
+button:focus-visible { border-radius: 8px; }
