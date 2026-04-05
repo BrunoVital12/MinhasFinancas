@@ -74,6 +74,7 @@ const ICONES = {
   gastos:     `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:5px"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`,
   receitas:   `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:5px"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
   recorrente: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:3px;opacity:0.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+  parcela: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:3px;opacity:0.8"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
 };
 
 // ===== Seletor de cor customizado =====
@@ -134,6 +135,156 @@ function inicializarSeletorCor() {
 function gerarId() {
   return crypto.randomUUID();
 }
+
+function adicionarMesesData(dataStr, meses) {
+  const [ano, mes, dia] = dataStr.split('-').map(Number);
+  const alvo = new Date(ano, mes - 1 + meses, 1);
+  const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+  const diaFinal = Math.min(dia, ultimoDia);
+  return `${alvo.getFullYear()}-${String(alvo.getMonth() + 1).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
+}
+
+// ===== Date Picker Customizado =====
+
+const _MESES_DP = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function htmlDatePicker(id, valor = '') {
+  let display = '';
+  if (valor) {
+    const [a, m, d] = valor.split('-');
+    display = `${d}/${m}/${a}`;
+  }
+  return `
+    <div class="dp-wrapper" id="dp-wrapper-${id}">
+      <input type="hidden" id="${id}" value="${valor}" />
+      <button type="button" class="dp-trigger" id="dp-trigger-${id}" data-dp-id="${id}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="dp-display${display ? '' : ' dp-placeholder'}" id="dp-display-${id}">${display || 'Selecione a data'}</span>
+        <svg class="dp-chevron" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>`;
+}
+
+function setDatePickerValue(id, valor) {
+  const hidden = document.getElementById(id);
+  if (!hidden) return;
+  hidden.value = valor || '';
+  const display = document.getElementById(`dp-display-${id}`);
+  if (!display) return;
+  if (valor) {
+    const [a, m, d] = valor.split('-');
+    display.textContent = `${d}/${m}/${a}`;
+    display.classList.remove('dp-placeholder');
+  } else {
+    display.textContent = 'Selecione a data';
+    display.classList.add('dp-placeholder');
+  }
+}
+
+function _dpRenderCal(cal, id, ano, mes, valorSel, aoMudar) {
+  const hoje = new Date();
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < primeiroDia; i++) cells.push('<div class="dp-cell dp-vazio"></div>');
+  for (let d = 1; d <= diasNoMes; d++) {
+    const ds = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isHoje = hoje.getFullYear()===ano && hoje.getMonth()===mes && hoje.getDate()===d;
+    const isSel = ds === valorSel;
+    cells.push(`<button type="button" class="dp-cell dp-dia${isHoje?' dp-hoje':''}${isSel?' dp-sel':''}" data-ds="${ds}">${d}</button>`);
+  }
+  cal.innerHTML = `
+    <div class="dp-header">
+      <button type="button" class="dp-nav" id="dp-prev">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="dp-mes-ano">${_MESES_DP[mes]} ${ano}</span>
+      <button type="button" class="dp-nav" id="dp-next">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="dp-dsem">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(x=>`<div>${x}</div>`).join('')}</div>
+    <div class="dp-grid">${cells.join('')}</div>`;
+
+  cal.querySelector('#dp-prev').addEventListener('click', e => {
+    e.stopPropagation();
+    let nm = mes-1, na = ano; if (nm<0){nm=11;na--;}
+    _dpRenderCal(cal, id, na, nm, valorSel, aoMudar);
+  });
+  cal.querySelector('#dp-next').addEventListener('click', e => {
+    e.stopPropagation();
+    let nm = mes+1, na = ano; if (nm>11){nm=0;na++;}
+    _dpRenderCal(cal, id, na, nm, valorSel, aoMudar);
+  });
+  cal.querySelectorAll('.dp-dia').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      setDatePickerValue(id, btn.dataset.ds);
+      if (aoMudar) aoMudar(btn.dataset.ds);
+      cal.remove();
+    });
+  });
+}
+
+function inicializarDatePicker(id, aoMudar) {
+  const trigger = document.getElementById(`dp-trigger-${id}`);
+  if (!trigger) return;
+  trigger.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.dp-cal').forEach(c => c.remove());
+    const hidden = document.getElementById(id);
+    const val = hidden ? hidden.value : '';
+    let ano, mes;
+    if (val) { [ano, mes] = val.split('-').map(Number); mes--; }
+    else { const h = new Date(); ano = h.getFullYear(); mes = h.getMonth(); }
+    const cal = document.createElement('div');
+    cal.className = 'dp-cal';
+    document.body.appendChild(cal);
+    _dpRenderCal(cal, id, ano, mes, val, aoMudar);
+    const rect = trigger.getBoundingClientRect();
+    cal.style.left = `${rect.left}px`;
+    const spaceAbaixo = window.innerHeight - rect.bottom;
+    if (spaceAbaixo >= 280 || spaceAbaixo >= rect.top) {
+      cal.style.top = `${rect.bottom + 4}px`;
+    } else {
+      cal.style.top = `${rect.top - cal.offsetHeight - 4}px`;
+    }
+    requestAnimationFrame(() => {
+      const cr = cal.getBoundingClientRect();
+      if (cr.right > window.innerWidth - 8) cal.style.left = `${window.innerWidth - cr.width - 8}px`;
+      if (cr.bottom > window.innerHeight - 8) cal.style.top = `${rect.top - cr.height - 4}px`;
+    });
+  });
+}
+
+// ===== Number Stepper Customizado =====
+
+function htmlNumberStepper(id, valor = 2, min = 1, max = 99) {
+  return `
+    <div class="num-stepper">
+      <button type="button" class="stepper-btn" data-target="${id}" data-op="menos" data-min="${min}" data-max="${max}">−</button>
+      <input type="number" id="${id}" value="${valor}" min="${min}" max="${max}" />
+      <button type="button" class="stepper-btn" data-target="${id}" data-op="mais" data-min="${min}" data-max="${max}">+</button>
+    </div>`;
+}
+
+function inicializarNumberStepper(id) {
+  document.querySelectorAll(`.stepper-btn[data-target="${id}"]`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inp = document.getElementById(id);
+      if (!inp) return;
+      const min = parseInt(btn.dataset.min) || 1;
+      const max = parseInt(btn.dataset.max) || 999;
+      let val = parseInt(inp.value) || min;
+      val = btn.dataset.op === 'menos' ? Math.max(min, val-1) : Math.min(max, val+1);
+      inp.value = val;
+      inp.dispatchEvent(new Event('input'));
+    });
+  });
+}
+
+// Fechar datepicker ao clicar fora
+document.addEventListener('click', () => document.querySelectorAll('.dp-cal').forEach(c => c.remove()));
 
 function formatarMoeda(valor) {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -275,6 +426,45 @@ function confirmarModalEdicaoRecorrente(titulo, mensagem, aoSalvarEste, aoSalvar
   document.getElementById('btn-rec-todos').addEventListener('click', () => {
     overlay.classList.remove('visivel');
     aoSalvarTodos();
+  });
+}
+
+function confirmarModalParcela(titulo, mensagem, numEsta, numSeguintes, numTodas, aoExcluirEsta, aoExcluirSeguintes, aoExcluirTodas) {
+  const overlay = document.getElementById('overlay-modal');
+  const modal = document.getElementById('modal');
+  const htmlAnterior = modal.innerHTML;
+  const visivel = overlay.classList.contains('visivel');
+
+  modal.innerHTML = `
+    <h2>${titulo}</h2>
+    <p class="modal-descricao">${mensagem}</p>
+    <div class="modal-recorrente-info">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Este é um gasto parcelado (${numEsta}/${numTodas}). Escolha o que deseja excluir.
+    </div>
+    <div class="modal-acoes-recorrente modal-acoes-parcela">
+      <div class="modal-acoes-parcela-grupo">
+        <button id="btn-par-esta" class="btn btn-perigo" style="opacity:0.7">Só esta</button>
+        <button id="btn-par-seguintes" class="btn btn-perigo" style="opacity:0.85">Esta e seguintes</button>
+        <button id="btn-par-todas" class="btn btn-perigo">Todas</button>
+      </div>
+      <button id="btn-par-cancelar" class="btn btn-secundario btn-cancelar-rec">Cancelar</button>
+    </div>
+  `;
+  overlay.classList.add('visivel');
+
+  document.getElementById('btn-par-cancelar').addEventListener('click', () => {
+    if (visivel) { modal.innerHTML = htmlAnterior; }
+    else { overlay.classList.remove('visivel'); }
+  });
+  document.getElementById('btn-par-esta').addEventListener('click', () => {
+    overlay.classList.remove('visivel'); aoExcluirEsta();
+  });
+  document.getElementById('btn-par-seguintes').addEventListener('click', () => {
+    overlay.classList.remove('visivel'); aoExcluirSeguintes();
+  });
+  document.getElementById('btn-par-todas').addEventListener('click', () => {
+    overlay.classList.remove('visivel'); aoExcluirTodas();
   });
 }
 
@@ -937,7 +1127,9 @@ function atualizarTabela() {
 function duplicarGasto(id) {
   const gasto = carregarGastos().find(g => g.id === id);
   if (!gasto) return;
-  abrirModalGasto(gasto, true);
+  // remove campos de parcela para o duplicado virar um gasto avulso
+  const { parcelaId, parcelaNum, parcelaTotal, ...gastoBase } = gasto;
+  abrirModalGasto(gastoBase, true);
 }
 
 function atualizarCardPendente() {
@@ -1065,6 +1257,7 @@ function renderizarTabelaGastos(gastos, categorias) {
         <td>${formatarData(g.data)}</td>
         <td>
           ${g.recorrente ? `<span title="Gasto recorrente">${ICONES.recorrente}</span>` : ''}${g.descricao}
+          ${g.parcelaId ? `<span class="badge-parcela" title="Parcela ${g.parcelaNum} de ${g.parcelaTotal}">${ICONES.parcela}${g.parcelaNum}/${g.parcelaTotal}</span>` : ''}
           ${g.obs ? `<div class="obs-gasto" title="${g.obs}">${g.obs}</div>` : ''}
         </td>
         <td><span class="badge-categoria" style="background:${corCat}">${nomeCat}</span></td>
@@ -1337,8 +1530,8 @@ function renderizarFormularioGasto(gasto = null) {
             </div>
           </div>
           <div class="form-grupo">
-            <label for="inp-data">Data</label>
-            <input type="date" id="inp-data" value="${gasto ? gasto.data : hoje}" required />
+            <label>Data</label>
+            ${htmlDatePicker('inp-data', gasto ? gasto.data : hoje)}
           </div>
         </div>
         <div class="form-grupo">
@@ -1396,6 +1589,7 @@ function renderizarFormularioGasto(gasto = null) {
   });
 
   inicializarSelectCategoria('inp-categoria');
+  inicializarDatePicker('inp-data');
 
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1535,7 +1729,7 @@ function salvarGastoDoForm(idExistente, aoSalvar = null) {
   const data = document.getElementById('inp-data').value;
   const descricao = document.getElementById('inp-descricao').value.trim();
   const categoriaId = document.getElementById('inp-categoria').value;
-  const recorrente = document.getElementById('inp-recorrente').checked;
+  const recorrente = document.getElementById('inp-recorrente')?.checked ?? false;
   const status = document.getElementById('inp-status').value;
   const obsEl = document.getElementById('inp-obs');
   const obs = obsEl ? obsEl.value.trim() : '';
@@ -1550,7 +1744,12 @@ function salvarGastoDoForm(idExistente, aoSalvar = null) {
   if (idExistente) {
     const idx = gastos.findIndex(g => g.id === idExistente);
     if (idx !== -1) {
-      gastos[idx] = { id: idExistente, data, descricao, valor, categoriaId, recorrente, status, obs: obs || undefined };
+      const existing = gastos[idx];
+      // preserva campos de parcela se existirem
+      const camposParcela = existing.parcelaId
+        ? { parcelaId: existing.parcelaId, parcelaNum: existing.parcelaNum, parcelaTotal: existing.parcelaTotal }
+        : {};
+      gastos[idx] = { id: idExistente, data, descricao, valor, categoriaId, recorrente, status, obs: obs || undefined, ...camposParcela };
     }
     mostrarToast('Gasto atualizado!', 'sucesso');
   } else {
@@ -1583,10 +1782,11 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
 
   const valorPreenchido = gasto ? gasto.valor : '';
   const dataPreenchida = gasto ? gasto.data : hoje;
-  const descPreenchida = gasto ? gasto.descricao : '';
+  const descPreenchida = gasto ? (isDuplicar && gasto.parcelaId ? gasto.descricao : gasto.descricao) : '';
   const catPreenchida = gasto ? gasto.categoriaId : null;
   const statusPreenchido = gasto ? gasto.status : 'pago';
-  const recorrentePreenchido = gasto ? gasto.recorrente : false;
+  const recorrentePreenchido = gasto ? (gasto.parcelaId ? false : gasto.recorrente) : false;
+  const isParcela = isEdicao && !!gasto.parcelaId;
 
   modal.innerHTML = `
     <h2>${titulo}</h2>
@@ -1600,8 +1800,8 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
           </div>
         </div>
         <div class="form-grupo">
-          <label for="inp-data">Data</label>
-          <input type="date" id="inp-data" value="${dataPreenchida}" required />
+          <label>Data</label>
+          ${htmlDatePicker('inp-data', dataPreenchida)}
         </div>
       </div>
       <div class="form-grupo">
@@ -1634,7 +1834,14 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
           </button>
         </div>
       </div>
-      <label class="toggle-recorrente" for="inp-recorrente">
+      ${isParcela ? `
+      <div class="info-parcela">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Parcela <strong>${gasto.parcelaNum}</strong> de <strong>${gasto.parcelaTotal}</strong>
+        &nbsp;·&nbsp; editando apenas esta parcela
+      </div>
+      ` : `
+      <label class="toggle-recorrente" for="inp-recorrente" id="label-recorrente">
         <input type="checkbox" id="inp-recorrente" class="toggle-check" ${recorrentePreenchido ? 'checked' : ''} />
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
         <svg class="toggle-icone" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
@@ -1643,6 +1850,27 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
           <span>Repete todo mês</span>
         </span>
       </label>
+      ${!isEdicao ? `
+      <label class="toggle-recorrente" for="inp-parcelado" id="label-parcelado">
+        <input type="checkbox" id="inp-parcelado" class="toggle-check" />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <svg class="toggle-icone" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <span class="toggle-texto">
+          <strong>Parcelado</strong>
+          <span>Divide em parcelas mensais</span>
+        </span>
+      </label>
+      <div id="area-parcelas" style="display:none;margin-top:4px;padding:14px 16px;background:rgba(108,99,255,0.07);border-radius:10px;border:1px solid rgba(108,99,255,0.18)">
+        <div class="form-grupo" style="margin:0 0 10px">
+          <label style="font-size:12px;margin-bottom:8px;display:block">Nº de parcelas</label>
+          ${htmlNumberStepper('inp-num-parcelas', 2, 2, 60)}
+        </div>
+        <p id="preview-parcelas" style="font-size:12px;color:var(--texto-secundario);margin:0">
+          <strong>2</strong> parcelas mensais
+        </p>
+      </div>
+      ` : ''}
+      `}
       <div class="modal-acoes">
         <button type="button" id="btn-cancelar-modal-gasto" class="btn btn-secundario">Cancelar</button>
         <button type="submit" class="btn btn-primario">${txtBotao}</button>
@@ -1652,6 +1880,54 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
   overlay.classList.add('visivel');
 
   inicializarSelectCategoria('inp-categoria');
+  inicializarDatePicker('inp-data');
+
+  // Toggles parcelado / recorrente (mutuamente exclusivos)
+  if (!isEdicao && !isParcela) {
+    const chkParcelado = document.getElementById('inp-parcelado');
+    const chkRecorrente = document.getElementById('inp-recorrente');
+    const areaParcelas = document.getElementById('area-parcelas');
+    inicializarNumberStepper('inp-num-parcelas');
+    const inpNumParcelas = document.getElementById('inp-num-parcelas');
+    const previewParcelas = document.getElementById('preview-parcelas');
+
+    const labelValor = document.querySelector('label[for="inp-valor"]');
+    const inpValor = document.getElementById('inp-valor');
+
+    const atualizarPreview = () => {
+      const n = Math.max(2, parseInt(inpNumParcelas.value) || 2);
+      const total = parseFloat(inpValor.value) || 0;
+      const porParcela = total > 0 ? ` de <strong>${formatarMoeda(total / n)}</strong> cada` : '';
+      previewParcelas.innerHTML = `<strong>${n}</strong> parcelas mensais${porParcela}`;
+    };
+
+    chkParcelado.addEventListener('change', () => {
+      areaParcelas.style.display = chkParcelado.checked ? 'block' : 'none';
+      labelValor.textContent = chkParcelado.checked ? 'Valor total' : 'Valor';
+      if (chkParcelado.checked) {
+        chkRecorrente.checked = false;
+        document.getElementById('label-recorrente').style.opacity = '0.4';
+        document.getElementById('label-recorrente').style.pointerEvents = 'none';
+        atualizarPreview();
+      } else {
+        document.getElementById('label-recorrente').style.opacity = '';
+        document.getElementById('label-recorrente').style.pointerEvents = '';
+      }
+    });
+
+    chkRecorrente.addEventListener('change', () => {
+      if (chkRecorrente.checked && chkParcelado.checked) {
+        chkParcelado.checked = false;
+        areaParcelas.style.display = 'none';
+        labelValor.textContent = 'Valor';
+        document.getElementById('label-recorrente').style.opacity = '';
+        document.getElementById('label-recorrente').style.pointerEvents = '';
+      }
+    });
+
+    inpNumParcelas.addEventListener('input', atualizarPreview);
+    inpValor.addEventListener('input', () => { if (chkParcelado.checked) atualizarPreview(); });
+  }
 
   // Status pill buttons
   document.querySelectorAll('.status-btn').forEach(btn => {
@@ -1694,6 +1970,7 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
   });
 
   document.getElementById('btn-nova-cat-rapido').addEventListener('click', () => {
+    const chkParc = document.getElementById('inp-parcelado');
     const prefill = {
       valor: document.getElementById('inp-valor').value,
       data: document.getElementById('inp-data').value,
@@ -1701,18 +1978,26 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
       obs: document.getElementById('inp-obs').value,
       categoriaId: document.getElementById('inp-categoria').value || null,
       status: document.getElementById('inp-status').value,
-      recorrente: document.getElementById('inp-recorrente').checked,
+      recorrente: document.getElementById('inp-recorrente') ? document.getElementById('inp-recorrente').checked : false,
+      parcelado: chkParc ? chkParc.checked : false,
+      numParcelas: document.getElementById('inp-num-parcelas') ? document.getElementById('inp-num-parcelas').value : '2',
     };
     const restaurar = (catId) => {
       abrirModalGasto(gasto, isDuplicar, aoSalvarExtra);
       document.getElementById('inp-valor').value = prefill.valor;
-      document.getElementById('inp-data').value = prefill.data;
+      setDatePickerValue('inp-data', prefill.data);
       document.getElementById('inp-descricao').value = prefill.descricao;
       document.getElementById('inp-obs').value = prefill.obs;
-      document.getElementById('inp-recorrente').checked = prefill.recorrente;
+      if (document.getElementById('inp-recorrente')) document.getElementById('inp-recorrente').checked = prefill.recorrente;
       document.getElementById('inp-status').value = prefill.status;
       document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('ativo', 'pago', 'pendente'));
       document.querySelector(`.status-btn[data-status="${prefill.status}"]`)?.classList.add('ativo', prefill.status);
+      if (document.getElementById('inp-parcelado') && prefill.parcelado) {
+        document.getElementById('inp-parcelado').checked = true;
+        document.getElementById('area-parcelas').style.display = 'block';
+        document.getElementById('inp-num-parcelas').value = prefill.numParcelas;
+        document.getElementById('preview-parcelas').innerHTML = `Serão criadas <strong>${prefill.numParcelas}</strong> entradas mensais`;
+      }
       atualizarSelectCategorias(catId);
     };
     abrirModalNovaCategoria(
@@ -1724,13 +2009,56 @@ function abrirModalGasto(gasto = null, isDuplicar = false, aoSalvarExtra = null)
   document.getElementById('form-modal-gasto').addEventListener('submit', e => {
     e.preventDefault();
 
+    // ===== Criar parcelamento (novo/duplicar apenas) =====
+    const chkParcelado = document.getElementById('inp-parcelado');
+    if (!isEdicao && chkParcelado && chkParcelado.checked) {
+      const valor = parseFloat(document.getElementById('inp-valor').value);
+      const data = document.getElementById('inp-data').value;
+      const descricao = document.getElementById('inp-descricao').value.trim();
+      const categoriaId = document.getElementById('inp-categoria').value;
+      const status = document.getElementById('inp-status').value;
+      const obsEl = document.getElementById('inp-obs');
+      const obs = obsEl ? obsEl.value.trim() : '';
+      const numParcelas = Math.max(2, Math.min(60, parseInt(document.getElementById('inp-num-parcelas').value) || 2));
+      const valorParcela = Math.round((valor / numParcelas) * 100) / 100;
+
+      if (!valor || valor <= 0) { mostrarToast('Valor inválido.', 'erro'); return; }
+      if (!data) { mostrarToast('Data inválida.', 'erro'); return; }
+      if (!descricao) { mostrarToast('Descrição obrigatória.', 'erro'); return; }
+      if (!categoriaId) { mostrarToast('Selecione uma categoria.', 'erro'); return; }
+
+      const parcelaId = gerarId();
+      const gastos = carregarGastos();
+      for (let i = 0; i < numParcelas; i++) {
+        gastos.push({
+          id: gerarId(),
+          data: adicionarMesesData(data, i),
+          descricao,
+          valor: valorParcela,
+          categoriaId,
+          recorrente: false,
+          status: i === 0 ? status : 'pendente',
+          obs: obs || undefined,
+          parcelaId,
+          parcelaNum: i + 1,
+          parcelaTotal: numParcelas,
+        });
+      }
+      salvarGastos(gastos);
+      overlay.classList.remove('visivel');
+      mostrarToast(`${numParcelas} parcelas criadas!`, 'sucesso');
+      renderizarDashboard();
+      if (aoSalvarExtra) aoSalvarExtra();
+      return;
+    }
+
     if (isEdicao && gasto.recorrente) {
       // Lê e valida os campos antes de perguntar
       const valor = parseFloat(document.getElementById('inp-valor').value);
       const data = document.getElementById('inp-data').value;
       const descricao = document.getElementById('inp-descricao').value.trim();
       const categoriaId = document.getElementById('inp-categoria').value;
-      const recorrente = document.getElementById('inp-recorrente').checked;
+      const recorrente = document.getElementById('inp-recorrente')?.checked ?? false;
       const status = document.getElementById('inp-status').value;
       const obsEl = document.getElementById('inp-obs');
       const obs = obsEl ? obsEl.value.trim() : '';
@@ -1803,6 +2131,39 @@ function excluirGasto(id) {
     });
   };
 
+  if (gasto.parcelaId) {
+    const parcelas = todos.filter(g => g.parcelaId === gasto.parcelaId);
+    const seguintes = parcelas.filter(g => g.parcelaNum >= gasto.parcelaNum);
+    confirmarModalParcela(
+      'Excluir parcela',
+      `<strong>${gasto.descricao}</strong>`,
+      gasto.parcelaNum,
+      seguintes.length,
+      parcelas.length,
+      () => {
+        const backup = [...todos];
+        salvarGastos(todos.filter(g => g.id !== id));
+        renderizarDashboard();
+        mostrarToast('Parcela excluída.', 'sucesso', () => { salvarGastos(backup); renderizarDashboard(); mostrarToast('Exclusão desfeita.', 'sucesso'); });
+      },
+      () => {
+        const backup = [...todos];
+        const idsRemover = new Set(seguintes.map(g => g.id));
+        salvarGastos(todos.filter(g => !idsRemover.has(g.id)));
+        renderizarDashboard();
+        mostrarToast(`${seguintes.length} parcela(s) excluída(s).`, 'sucesso', () => { salvarGastos(backup); renderizarDashboard(); mostrarToast('Exclusão desfeita.', 'sucesso'); });
+      },
+      () => {
+        const backup = [...todos];
+        const idsRemover = new Set(parcelas.map(g => g.id));
+        salvarGastos(todos.filter(g => !idsRemover.has(g.id)));
+        renderizarDashboard();
+        mostrarToast(`${parcelas.length} parcelas excluídas.`, 'sucesso', () => { salvarGastos(backup); renderizarDashboard(); mostrarToast('Exclusão desfeita.', 'sucesso'); });
+      }
+    );
+    return;
+  }
+
   if (gasto.recorrente) {
     const totalRecorrentes = todos.filter(g => g.recorrente && g.descricao === gasto.descricao).length;
     confirmarModalRecorrente(
@@ -1872,6 +2233,54 @@ function renderizarImportarCSV() {
     <div style="display:flex;gap:8px;margin-bottom:20px">
       <button class="btn ${tipoImportacaoCSV === 'gastos' ? 'btn-primario' : 'btn-secundario'}" id="tab-importar-gastos">Gastos</button>
       <button class="btn ${tipoImportacaoCSV === 'receitas' ? 'btn-primario' : 'btn-secundario'}" id="tab-importar-receitas">Receitas</button>
+    </div>
+
+    <div class="card tutorial-importar">
+      <div class="tutorial-header" id="tutorial-toggle" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primario);flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <span style="font-weight:600;font-size:14px">Como preparar o arquivo CSV</span>
+        </div>
+        <svg class="tutorial-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+
+      <div class="tutorial-corpo" id="tutorial-corpo" style="display:none">
+        ${tipoImportacaoCSV === 'gastos' ? `
+        <div class="tutorial-conteudo">
+          <p class="tutorial-desc">O arquivo deve ser um <strong>.csv</strong> com as seguintes colunas obrigatórias — os nomes exatos podem variar pois você os mapeia na próxima etapa:</p>
+          <ul class="tutorial-lista">
+            <li><span class="tutorial-badge">Data</span> Data do gasto no formato <code>DD/MM/AAAA</code>, <code>AAAA-MM-DD</code> ou <code>MM/DD/AAAA</code></li>
+            <li><span class="tutorial-badge">Descrição</span> Nome ou descrição da despesa (ex: <em>Supermercado</em>, <em>Conta de luz</em>)</li>
+            <li><span class="tutorial-badge">Valor</span> Valor numérico da despesa — pode conter R$, pontos ou vírgulas</li>
+          </ul>
+          <p class="tutorial-tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Qualquer separador é aceito (vírgula, ponto e vírgula ou tab). A categoria pode ser atribuída manualmente na etapa de revisão.
+          </p>
+          <div class="tutorial-img-wrap">
+            <p style="font-size:12px;color:var(--texto-secundario);margin-bottom:8px">Exemplo de arquivo CSV de gastos:</p>
+            <img src="assets/Tutorial-gastos.png" alt="Exemplo de CSV de gastos" class="tutorial-img" />
+          </div>
+        </div>
+        ` : `
+        <div class="tutorial-conteudo">
+          <p class="tutorial-desc">O arquivo deve ser um <strong>.csv</strong> com as seguintes colunas obrigatórias — os nomes exatos podem variar pois você os mapeia na próxima etapa:</p>
+          <ul class="tutorial-lista">
+            <li><span class="tutorial-badge">Data</span> Data da receita no formato <code>DD/MM/AAAA</code>, <code>AAAA-MM-DD</code> ou <code>MM/DD/AAAA</code></li>
+            <li><span class="tutorial-badge">Descrição</span> Nome ou origem da receita (ex: <em>Salário</em>, <em>Freelance</em>)</li>
+            <li><span class="tutorial-badge">Valor</span> Valor numérico recebido — pode conter R$, pontos ou vírgulas</li>
+          </ul>
+          <p class="tutorial-tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Qualquer separador é aceito (vírgula, ponto e vírgula ou tab). A categoria é opcional para receitas.
+          </p>
+          <div class="tutorial-img-wrap">
+            <p style="font-size:12px;color:var(--texto-secundario);margin-bottom:8px">Exemplo de arquivo CSV de receitas:</p>
+            <img src="assets/tutorial-receitas.png" alt="Exemplo de CSV de receitas" class="tutorial-img" />
+          </div>
+        </div>
+        `}
+      </div>
     </div>
 
     <div class="card">
@@ -1966,6 +2375,14 @@ function renderizarImportarCSV() {
   inicializarSelectCategoria('inp-cat-lote');
 
   configurarEventosUpload();
+
+  document.getElementById('tutorial-toggle').addEventListener('click', () => {
+    const corpo = document.getElementById('tutorial-corpo');
+    const chevron = document.querySelector('.tutorial-chevron');
+    const aberto = corpo.style.display !== 'none';
+    corpo.style.display = aberto ? 'none' : 'block';
+    chevron.style.transform = aberto ? '' : 'rotate(180deg)';
+  });
 
   document.getElementById('tab-importar-gastos').addEventListener('click', () => {
     tipoImportacaoCSV = 'gastos';
@@ -2329,8 +2746,8 @@ function abrirModalReceita(id = null, catIdPreselect = null) {
           </div>
         </div>
         <div class="form-grupo">
-          <label for="rec-data">Data</label>
-          <input type="date" id="rec-data" value="${receita ? receita.data : hoje}" required />
+          <label>Data</label>
+          ${htmlDatePicker('rec-data', receita ? receita.data : hoje)}
         </div>
       </div>
       <div class="form-grupo">
@@ -2362,6 +2779,7 @@ function abrirModalReceita(id = null, catIdPreselect = null) {
   `;
   overlay.classList.add('visivel');
   inicializarSelectCategoria('rec-categoria');
+  inicializarDatePicker('rec-data');
 
   document.getElementById('btn-nova-cat-receita').addEventListener('click', () => {
     const prefill = {
@@ -2374,7 +2792,7 @@ function abrirModalReceita(id = null, catIdPreselect = null) {
     const restaurar = (catId) => {
       abrirModalReceita(id);
       document.getElementById('rec-valor').value = prefill.valor;
-      document.getElementById('rec-data').value = prefill.data;
+      setDatePickerValue('rec-data', prefill.data);
       document.getElementById('rec-descricao').value = prefill.descricao;
       document.getElementById('rec-recorrente').checked = prefill.recorrente;
       selecionarCategoriaDropdown('rec-categoria', catId !== undefined ? catId : prefill.categoriaId);
@@ -2475,8 +2893,8 @@ function duplicarReceita(id, catIdPreselect = null) {
           </div>
         </div>
         <div class="form-grupo">
-          <label for="rec-data">Data</label>
-          <input type="date" id="rec-data" value="${hoje}" required />
+          <label>Data</label>
+          ${htmlDatePicker('rec-data', hoje)}
         </div>
       </div>
       <div class="form-grupo">
@@ -2508,6 +2926,7 @@ function duplicarReceita(id, catIdPreselect = null) {
   `;
   overlay.classList.add('visivel');
   inicializarSelectCategoria('rec-categoria');
+  inicializarDatePicker('rec-data');
 
   document.getElementById('btn-nova-cat-receita').addEventListener('click', () => {
     const prefill = {
@@ -2520,7 +2939,7 @@ function duplicarReceita(id, catIdPreselect = null) {
     const restaurar = (catId) => {
       duplicarReceita(id);
       document.getElementById('rec-valor').value = prefill.valor;
-      document.getElementById('rec-data').value = prefill.data;
+      setDatePickerValue('rec-data', prefill.data);
       document.getElementById('rec-descricao').value = prefill.descricao;
       document.getElementById('rec-recorrente').checked = prefill.recorrente;
       selecionarCategoriaDropdown('rec-categoria', catId !== undefined ? catId : prefill.categoriaId);

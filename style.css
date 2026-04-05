@@ -675,10 +675,8 @@ td .cat-select-dropdown {
   box-shadow: 0 0 0 3px var(--cor-ativo-glow);
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.6);
-  cursor: pointer;
-}
+/* date picker nativo oculto — substituído pelo dp-trigger customizado */
+.dp-wrapper input[type="hidden"] { display: none; }
 
 .form-linha {
   display: grid;
@@ -2770,11 +2768,22 @@ mark {
 /* --- MODAL: ações recorrentes (3 botões) --- */
 .modal-acoes-recorrente {
   display: flex;
+  flex-wrap: nowrap;
   gap: 10px;
   align-items: center;
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--cor-borda);
+}
+.modal-acoes-parcela {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.modal-acoes-parcela-grupo {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .modal-acoes-recorrente .btn-cancelar-rec {
   margin-right: auto;
@@ -3784,6 +3793,298 @@ body.tema-claro ::-webkit-scrollbar-track {
 /* --- Tema claro: sidebar continua escura (por design) --- */
 body.tema-claro #sidebar {
   background: linear-gradient(170deg, #06061a 0%, #0a0a20 50%, #060616 100%);
+}
+
+/* --- Badge de parcela na tabela --- */
+.badge-parcela {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(108,99,255,0.15);
+  color: var(--primario);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* --- Remove spinners dos inputs number --- */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+/* --- Date Picker customizado --- */
+.dp-wrapper {
+  width: 100%;
+}
+.dp-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--cor-texto);
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dp-trigger:hover,
+.dp-trigger:focus {
+  border-color: var(--cor-ativo);
+  box-shadow: 0 0 0 3px var(--cor-ativo-glow);
+  outline: none;
+}
+.dp-trigger svg:first-child { color: var(--cor-ativo); flex-shrink: 0; }
+.dp-display { flex: 1; }
+.dp-placeholder { color: var(--cor-texto-suave); }
+.dp-chevron { flex-shrink: 0; opacity: 0.5; }
+
+.dp-cal {
+  position: fixed;
+  z-index: 9999;
+  background: var(--cor-card);
+  border: 1px solid var(--cor-borda);
+  border-radius: 12px;
+  padding: 12px;
+  width: 264px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: dpFadeIn 0.12s ease;
+}
+body.tema-claro .dp-cal {
+  box-shadow: 0 8px 32px rgba(108,99,255,0.15);
+}
+@keyframes dpFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+.dp-mes-ano {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--cor-texto);
+}
+.dp-nav {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--cor-borda);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--cor-texto-suave);
+  transition: background 0.12s, color 0.12s;
+}
+.dp-nav:hover { background: var(--cor-ativo); color: #fff; border-color: var(--cor-ativo); }
+.dp-dsem {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+.dp-dsem div {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cor-texto-suave);
+  padding: 3px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.dp-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--cor-texto);
+  transition: background 0.1s, color 0.1s;
+  font-family: inherit;
+}
+.dp-dia:hover { background: var(--cor-ativo-glow); color: var(--cor-ativo); }
+.dp-hoje {
+  font-weight: 700;
+  color: var(--cor-ativo);
+}
+.dp-sel {
+  background: var(--cor-ativo) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+.dp-vazio { pointer-events: none; }
+
+/* --- Number Stepper customizado --- */
+.num-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--cor-fundo);
+}
+.num-stepper input[type="number"] {
+  width: 56px;
+  text-align: center;
+  border: none;
+  border-left: 1px solid var(--cor-borda);
+  border-right: 1px solid var(--cor-borda);
+  border-radius: 0;
+  background: transparent;
+  color: var(--cor-texto);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 8px 4px;
+  outline: none;
+}
+.stepper-btn {
+  width: 36px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cor-texto-suave);
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+  user-select: none;
+}
+.stepper-btn:hover { background: var(--cor-ativo-glow); color: var(--cor-ativo); }
+.stepper-btn:active { background: var(--cor-ativo); color: #fff; }
+
+/* --- Banner info de parcela no modal --- */
+.info-parcela {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--texto-secundario);
+  background: rgba(108,99,255,0.08);
+  border-left: 3px solid var(--primario);
+  border-radius: 0 8px 8px 0;
+  padding: 9px 14px;
+  margin-top: 4px;
+}
+.info-parcela svg {
+  flex-shrink: 0;
+  color: var(--primario);
+}
+
+/* --- Tutorial de importação CSV --- */
+.tutorial-importar {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(108,99,255,0.18);
+}
+.tutorial-header {
+  user-select: none;
+}
+.tutorial-header:hover span {
+  color: var(--primario);
+}
+.tutorial-corpo {
+  margin-top: 16px;
+  border-top: 1px solid var(--borda);
+  padding-top: 16px;
+}
+.tutorial-desc {
+  font-size: 13.5px;
+  color: var(--texto-secundario);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+.tutorial-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tutorial-lista li {
+  font-size: 13px;
+  color: var(--texto-secundario);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1.5;
+}
+.tutorial-badge {
+  background: rgba(108,99,255,0.15);
+  color: var(--primario);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.tutorial-lista li code {
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-family: monospace;
+}
+body.tema-claro .tutorial-lista li code {
+  background: rgba(0,0,0,0.06);
+}
+.tutorial-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--texto-secundario);
+  background: rgba(108,99,255,0.07);
+  border-left: 3px solid var(--primario);
+  border-radius: 0 6px 6px 0;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.tutorial-tip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primario);
+}
+.tutorial-img-wrap {
+  margin-top: 4px;
+}
+.tutorial-img {
+  width: 100%;
+  max-width: 680px;
+  border-radius: 8px;
+  border: 1px solid var(--borda);
+  display: block;
 }
 
 /* --- Focus visible global: anel roxo coerente --- */
